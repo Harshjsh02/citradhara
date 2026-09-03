@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import confetti from "canvas-confetti";
-import { CheckCircle2, Video as VideoIcon, Sparkles, User, Info, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, Video as VideoIcon, Sparkles, User, Info, Pencil, Trash2, ChevronRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import VideoCard from "@/components/VideoCard";
@@ -43,14 +43,22 @@ export default function ChannelPage() {
       const channelVideos = all.filter((v) => v.uploaderUid === channelId);
       setVideos(channelVideos);
 
-      // Try loading custom profile
-      const savedProfile = await fetchUserProfile(channelId);
+      // Try loading custom profile for channelId OR user.uid
+      const targetUid = channelId || user?.uid;
+      let savedProfile: UserProfile | null = null;
+      if (targetUid) {
+        savedProfile = await fetchUserProfile(targetUid);
+      }
+      if (!savedProfile && user?.uid) {
+        savedProfile = await fetchUserProfile(user.uid);
+      }
+
       if (savedProfile) {
-        setChannelName(savedProfile.displayName);
-        setChannelAvatar(normalizeThumbnailUrl(savedProfile.photoURL) || savedProfile.photoURL);
-        setChannelHandle(savedProfile.handle);
+        if (savedProfile.displayName) setChannelName(savedProfile.displayName);
+        if (savedProfile.photoURL) setChannelAvatar(normalizeThumbnailUrl(savedProfile.photoURL) || savedProfile.photoURL);
+        if (savedProfile.handle) setChannelHandle(savedProfile.handle);
         if (savedProfile.bannerURL) setChannelBanner(savedProfile.bannerURL);
-        if (savedProfile.bio) setChannelBio(savedProfile.bio);
+        if (savedProfile.bio !== undefined) setChannelBio(savedProfile.bio);
       } else if (channelVideos.length > 0) {
         setChannelName(channelVideos[0].uploaderName);
         setChannelAvatar(normalizeThumbnailUrl(channelVideos[0].uploaderAvatar) || channelVideos[0].uploaderAvatar);
@@ -156,7 +164,7 @@ export default function ChannelPage() {
                   className="h-24 w-24 sm:h-32 sm:w-32 rounded-full object-cover border-4 border-[#08080a] shadow-2xl bg-[#141624]"
                 />
 
-                <div className="space-y-1 mb-2">
+                <div className="space-y-1.5 mb-2 max-w-xl">
                   <div className="flex items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-bold text-white">
                       {channelName}
@@ -166,6 +174,19 @@ export default function ChannelPage() {
                   <p className="text-xs text-zinc-400">
                     @{channelHandle} • {videos.length} stream uploads • CodersHigh Community
                   </p>
+                  {/* Channel Description Snippet in Header */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("about")}
+                    className="text-left text-xs text-zinc-300 hover:text-white transition flex items-center gap-1.5 group/desc pt-0.5"
+                  >
+                    <span className="line-clamp-2 leading-relaxed text-zinc-300 group-hover/desc:text-zinc-100">
+                      {channelBio || "Welcome to my channel on Citradhara. Click here to read full about and details."}
+                    </span>
+                    <span className="text-zinc-500 group-hover/desc:text-amber-400 font-semibold text-[11px] flex items-center flex-shrink-0">
+                      ...more <ChevronRight className="h-3 w-3 inline ml-0.5" />
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -277,19 +298,50 @@ export default function ChannelPage() {
                 </div>
               )
             ) : (
-              <div className="max-w-2xl rounded-2xl border border-[#181822] bg-[#101015] p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Info className="h-4 w-4 text-amber-400" />
-                  About {channelName}
-                </h3>
-                <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">
-                  {channelBio}
-                </p>
-                <div className="pt-3 border-t border-[#181822] text-xs text-zinc-400 space-y-1.5">
-                  <p>• Total streams: <strong className="text-white">{videos.length}</strong></p>
-                  <p>• Handle: <strong className="text-amber-400">@{channelHandle}</strong></p>
-                  <p>• Community: <strong className="text-zinc-200">CodersHigh</strong></p>
-                  <p>• Platform: <strong className="text-amber-400">Citradhara</strong></p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
+                {/* Description Box */}
+                <div className="md:col-span-2 rounded-2xl border border-[#181822] bg-[#101015] p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#181822] pb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Info className="h-4 w-4 text-amber-400" />
+                      About & Description
+                    </h3>
+                    {isOwnChannel && (
+                      <button
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-medium rounded-full bg-amber-400/10 px-3 py-1 transition"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        <span>Edit Description</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">
+                    {channelBio || "This creator hasn't written a description yet. Click 'Edit Channel' above to add your bio and links."}
+                  </p>
+                </div>
+
+                {/* Details Box */}
+                <div className="rounded-2xl border border-[#181822] bg-[#101015] p-6 space-y-4 shadow-sm h-fit">
+                  <h3 className="text-sm font-bold text-white border-b border-[#181822] pb-3">Channel Details</h3>
+                  <div className="space-y-3 text-xs text-zinc-300">
+                    <div className="flex items-center justify-between py-1 border-b border-[#181822]">
+                      <span className="text-zinc-500">Handle</span>
+                      <span className="font-semibold text-amber-400">@{channelHandle}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-[#181822]">
+                      <span className="text-zinc-500">Total Streams</span>
+                      <span className="font-semibold text-white">{videos.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-[#181822]">
+                      <span className="text-zinc-500">Community</span>
+                      <span className="font-semibold text-zinc-200">CodersHigh</span>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-zinc-500">Platform</span>
+                      <span className="font-semibold text-amber-400">Citradhara</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

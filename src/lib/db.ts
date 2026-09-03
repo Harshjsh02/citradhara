@@ -382,15 +382,30 @@ export async function deleteVideo(videoId: string): Promise<boolean> {
 }
 
 export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
+  // First check instant local cache
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(`citra_profile_${uid}`) || localStorage.getItem("citra_current_profile");
+      if (saved) {
+        const parsed = JSON.parse(saved) as UserProfile;
+        if (parsed.uid === uid || !uid) return parsed;
+      }
+    } catch {}
+  }
+
   if (isFirebaseConfigured && db) {
     try {
       const userRef = doc(db, "users", uid);
-      const snap = await getDoc(userRef);
+      const snap = await withTimeout(getDoc(userRef), 2000);
       if (snap.exists()) {
-        return snap.data() as UserProfile;
+        const data = snap.data() as UserProfile;
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`citra_profile_${uid}`, JSON.stringify(data));
+        }
+        return data;
       }
     } catch (err) {
-      console.warn("Fetch profile error:", err);
+      console.warn("Fetch profile error or timeout:", err);
     }
   }
 
@@ -407,23 +422,15 @@ export async function fetchUserProfile(uid: string): Promise<UserProfile | null>
 }
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
-  if (isFirebaseConfigured && db) {
-    try {
-      const userRef = doc(db, "users", profile.uid);
-      await setDoc(userRef, profile, { merge: true });
-    } catch (err) {
-      console.warn("Save profile error:", err);
-    }
-  }
-
   if (typeof window !== "undefined") {
     try {
+      localStorage.setItem("citra_current_profile", JSON.stringify(profile));
       localStorage.setItem(`citra_profile_${profile.uid}`, JSON.stringify(profile));
 
       // Update local videos by this creator so their channel name, avatar, and handle update across the app
       const local = getLocalVideos();
       const updated = local.map((v) => {
-        if (v.uploaderUid === profile.uid) {
+        if (v.uploaderUid === profile.uid || v.uploaderName === profile.displayName) {
           return {
             ...v,
             uploaderName: profile.displayName,
@@ -436,6 +443,15 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
       saveLocalVideos(updated);
     } catch (e) {
       console.error("Failed saving profile to storage:", e);
+    }
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", profile.uid);
+      await withTimeout(setDoc(userRef, profile, { merge: true }), 2500);
+    } catch (err) {
+      console.warn("Save profile error:", err);
     }
   }
 }
