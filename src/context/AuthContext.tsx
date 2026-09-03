@@ -1,0 +1,130 @@
+"use client";
+
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged,
+  User as FirebaseUser 
+} from "firebase/auth";
+import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
+
+export interface UserAuth {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
+interface AuthContextType {
+  user: UserAuth | null;
+  loading: boolean;
+  isFirebaseActive: boolean;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  isFirebaseActive: false,
+  signInWithGoogle: async () => {},
+  signOut: async () => {},
+});
+
+const DEMO_USER_KEY = "citradhara_demo_user";
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserAuth | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isFirebaseConfigured && auth) {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          setUser({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName,
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL,
+          });
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      // Local demo mode: check stored demo user
+      try {
+        const saved = localStorage.getItem(DEMO_USER_KEY);
+        if (saved) {
+          setUser(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      setLoading(false);
+    }
+  }, []);
+
+  const signInWithGoogle = async () => {
+    if (isFirebaseConfigured && auth && googleProvider) {
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        if (result.user) {
+          setUser({
+            uid: result.user.uid,
+            displayName: result.user.displayName,
+            email: result.user.email,
+            photoURL: result.user.photoURL,
+          });
+        }
+      } catch (error) {
+        console.error("Google Sign-in failed:", error);
+        throw error;
+      }
+    } else {
+      // Demo simulated Google sign-in
+      const mockUser: UserAuth = {
+        uid: "user_codershigh_explorer",
+        displayName: "CodersHigh Creator",
+        email: "creator@codershigh.dev",
+        photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+      };
+      setUser(mockUser);
+      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(mockUser));
+    }
+  };
+
+  const signOut = async () => {
+    if (isFirebaseConfigured && auth) {
+      try {
+        await firebaseSignOut(auth);
+      } catch (error) {
+        console.error("Sign out error:", error);
+      }
+    } else {
+      localStorage.removeItem(DEMO_USER_KEY);
+    }
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isFirebaseActive: isFirebaseConfigured,
+        signInWithGoogle,
+        signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
+}

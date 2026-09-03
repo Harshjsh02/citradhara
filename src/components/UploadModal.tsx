@@ -1,0 +1,485 @@
+"use client";
+
+import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  X, 
+  UploadCloud, 
+  HardDrive, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  HelpCircle,
+  Film,
+  FileVideo,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Check,
+  Code
+} from "lucide-react";
+import { CATEGORIES } from "@/types";
+import { extractDriveFileId, getDriveEmbedUrl, getDriveThumbnailUrl } from "@/lib/drive";
+import { uploadVideoFileToDrive, DriveUploadProgress } from "@/lib/driveUpload";
+import { addVideo } from "@/lib/db";
+import { useAuth } from "@/context/AuthContext";
+
+interface UploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload Method Tab: 'file' | 'link'
+  const [uploadMethod, setUploadMethod] = useState<"file" | "link">("file");
+
+  // File Upload State
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<DriveUploadProgress | null>(null);
+  const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
+
+  // Drive Link & Parsed State
+  const [driveInput, setDriveInput] = useState("");
+  const [fileId, setFileId] = useState<string | null>(null);
+
+  // Metadata
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<string>("Web Development");
+  const [tagsInput, setTagsInput] = useState("codershigh, tech");
+  const [customThumbnail, setCustomThumbnail] = useState("");
+  const [duration, setDuration] = useState("15:00");
+
+  // UI state
+  const [showDriveGuide, setShowDriveGuide] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Auto populate title from filename
+    const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+    if (!title) {
+      setTitle(cleanTitle);
+    }
+
+    setSelectedFile(file);
+    setErrorMessage("");
+    setIsUploadingToDrive(true);
+
+    try {
+      const result = await uploadVideoFileToDrive(file, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      if (result.success && result.fileId) {
+        setFileId(result.fileId);
+        setDriveInput(result.url || `https://drive.google.com/file/d/${result.fileId}/view`);
+      } else {
+        setErrorMessage(result.error || "Failed to upload file to Google Drive.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "File upload failed.");
+    } finally {
+      setIsUploadingToDrive(false);
+    }
+  };
+
+  const handleDriveUrlChange = (value: string) => {
+    setDriveInput(value);
+    setErrorMessage("");
+    const extracted = extractDriveFileId(value);
+    setFileId(extracted);
+  };
+
+  const handlePublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fileId) {
+      setErrorMessage("Please select a video file or paste a valid Google Drive link.");
+      return;
+    }
+    if (!title.trim()) {
+      setErrorMessage("Please enter a title for your wonder stream.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const uploaderUid = user?.uid || "user_community_creator";
+      const uploaderName = user?.displayName || "CodersHigh Creator";
+      const uploaderAvatar = user?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80";
+      const uploaderHandle = uploaderName.toLowerCase().replace(/\s+/g, "_");
+
+      const tags = tagsInput
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+
+      const thumbnail = customThumbnail.trim() || getDriveThumbnailUrl(fileId);
+
+      const newVideo = await addVideo({
+        title: title.trim(),
+        description: description.trim() || "Shared by the CodersHigh community on Citradhara - A Stream of Wonders.",
+        driveFileId: fileId,
+        driveUrl: `https://drive.google.com/file/d/${fileId}/view`,
+        embedUrl: getDriveEmbedUrl(fileId),
+        thumbnailUrl: thumbnail,
+        uploaderUid,
+        uploaderName,
+        uploaderHandle,
+        uploaderAvatar,
+        category,
+        tags,
+        duration: duration.trim() || "Stream",
+      });
+
+      onClose();
+      router.push(`/watch/${newVideo.id}`);
+    } catch (err) {
+      console.error("Failed to publish video:", err);
+      setErrorMessage("Something went wrong publishing your video.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-[#272b3e] bg-[#11131c] shadow-2xl overflow-hidden my-6">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-[#212435] px-6 py-4 bg-[#141622]">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-amber-500 to-rose-600">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Stream Video to Citradhara</h2>
+              <p className="text-[11px] text-amber-400">Stores directly on your Google Drive Cloud</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="rounded-full p-1.5 text-zinc-400 hover:bg-[#202334] hover:text-white transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Upload Method Selector Tabs */}
+        <div className="flex border-b border-[#212435] bg-[#0d0e17]">
+          <button
+            type="button"
+            onClick={() => setUploadMethod("file")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold border-b-2 transition ${
+              uploadMethod === "file"
+                ? "border-amber-400 text-amber-400 bg-amber-400/5 font-bold"
+                : "border-transparent text-zinc-400 hover:text-white"
+            }`}
+          >
+            <UploadCloud className="h-4 w-4" />
+            <span>Upload Video File (From Computer)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setUploadMethod("link")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold border-b-2 transition ${
+              uploadMethod === "link"
+                ? "border-amber-400 text-amber-400 bg-amber-400/5 font-bold"
+                : "border-transparent text-zinc-400 hover:text-white"
+            }`}
+          >
+            <LinkIcon className="h-4 w-4" />
+            <span>Paste Google Drive Link</span>
+          </button>
+        </div>
+
+        {/* Modal Form */}
+        <form onSubmit={handlePublish} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Method 1: File Dropzone */}
+          {uploadMethod === "file" && (
+            <div className="space-y-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="video/*"
+                className="hidden"
+              />
+
+              {!selectedFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#2b2f42] hover:border-amber-500/50 bg-[#161826]/50 p-8 text-center cursor-pointer transition group"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-3 group-hover:scale-110 transition-transform">
+                    <FileVideo className="h-7 w-7" />
+                  </div>
+                  <p className="text-sm font-bold text-white mb-1">
+                    Select video to upload to your Google Drive
+                  </p>
+                  <p className="text-xs text-zinc-400 mb-4">
+                    Supports MP4, WebM, MOV, MKV files
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-black shadow-md hover:bg-amber-400 transition"
+                  >
+                    Browse Files
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#272b3d] bg-[#161826] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                        <FileVideo className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white truncate max-w-xs">{selectedFile.name}</p>
+                        <p className="text-[11px] text-zinc-400">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB • Google Drive Target
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setFileId(null);
+                        setUploadProgress(null);
+                      }}
+                      className="text-zinc-400 hover:text-white text-xs"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  {/* Progress Bar */}
+                  {uploadProgress && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] text-zinc-400">
+                        <span>
+                          {isUploadingToDrive ? "Uploading directly to Google Drive..." : "Uploaded to Google Drive!"}
+                        </span>
+                        <span className="font-mono text-amber-400 font-bold">{uploadProgress.percentage}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-[#202336] overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-300"
+                          style={{ width: `${uploadProgress.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {fileId && !isUploadingToDrive && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-400 pt-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Ready to stream from Google Drive Cloud</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Method 2: Link Input */}
+          {uploadMethod === "link" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+                <span>Google Drive Share Link or File ID *</span>
+                {fileId && (
+                  <span className="flex items-center gap-1 text-[11px] text-emerald-400 normal-case font-medium">
+                    <CheckCircle2 className="h-3 w-3" /> Valid File ID: {fileId.slice(0, 8)}...
+                  </span>
+                )}
+              </label>
+              <input
+                type="text"
+                value={driveInput}
+                onChange={(e) => handleDriveUrlChange(e.target.value)}
+                placeholder="https://drive.google.com/file/d/1A2B3C.../view?usp=sharing"
+                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition"
+              />
+            </div>
+          )}
+
+          {/* Setup Guide Accordion */}
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3.5">
+            <button
+              type="button"
+              onClick={() => setShowDriveGuide(!showDriveGuide)}
+              className="flex w-full items-center justify-between text-xs font-semibold text-amber-300"
+            >
+              <span className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-amber-400" />
+                How community uploads to your Google Drive work
+              </span>
+              <HelpCircle className="h-4 w-4" />
+            </button>
+
+            {showDriveGuide && (
+              <div className="mt-3 space-y-2 text-xs text-zinc-300 border-t border-amber-500/20 pt-2 leading-relaxed">
+                <p>
+                  You can accept video uploads straight into your Google Drive folder for <strong>100% free</strong> without any server bills:
+                </p>
+                <div className="rounded-xl bg-black/60 p-3 font-mono text-[11px] text-zinc-300 space-y-1">
+                  <p className="text-amber-400">// 1. Create a Google Drive folder &quot;CodersHigh Videos&quot;</p>
+                  <p className="text-zinc-400">// 2. Community members upload directly from the web interface</p>
+                  <p className="text-emerald-400">// 3. Videos stream with adaptive speed and 0 bandwidth cost!</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Video Preview if file ID parsed */}
+          {fileId && (
+            <div className="rounded-2xl border border-[#262a3c] bg-black p-3 space-y-2">
+              <p className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                <Film className="h-3.5 w-3.5 text-amber-400" />
+                Stream Preview:
+              </p>
+              <div className="aspect-video w-full rounded-xl overflow-hidden bg-zinc-950">
+                <iframe
+                  src={getDriveEmbedUrl(fileId)}
+                  title="Preview"
+                  className="h-full w-full border-0"
+                  allow="autoplay; fullscreen"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Video Title */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              Stream Title *
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Masterclass on Next.js 15 & System Architecture"
+              className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition"
+              required
+            />
+          </div>
+
+          {/* Category & Duration */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none"
+              >
+                {CATEGORIES.filter((c) => c !== "All").map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                Duration
+              </label>
+              <input
+                type="text"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                placeholder="e.g. 24:15 or Live Stream"
+                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              Description & Topics Covered
+            </label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Share what this wonder stream is about, repository links, code resources..."
+              className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none transition resize-none"
+            />
+          </div>
+
+          {/* Custom Thumbnail URL & Tags */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1">
+                <ImageIcon className="h-3.5 w-3.5 text-indigo-400" />
+                Custom Thumbnail Image (Optional)
+              </label>
+              <input
+                type="url"
+                value={customThumbnail}
+                onChange={(e) => setCustomThumbnail(e.target.value)}
+                placeholder="https://images.unsplash.com/..."
+                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                Tags (Comma separated)
+              </label>
+              <input
+                type="text"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="nextjs, python, fullstack"
+                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Error message */}
+          {errorMessage && (
+            <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#212435]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-5 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || isUploadingToDrive || !fileId}
+              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition"
+            >
+              <UploadCloud className="h-4 w-4" />
+              <span>{isSubmitting ? "Publishing..." : "Publish to Citradhara"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
