@@ -1,26 +1,23 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
   X, 
   Sparkles, 
   CheckCircle2, 
   AlertCircle, 
-  Film,
-  Link as LinkIcon,
-  Image as ImageIcon,
-  ExternalLink,
-  HelpCircle,
-  UploadCloud,
-  ChevronDown
+  Film, 
+  Link as LinkIcon, 
+  ExternalLink, 
+  HelpCircle, 
+  ChevronDown 
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
 import { 
   parseVideoUrl,
   getDriveEmbedUrl, 
-  getDriveThumbnailUrl,
-  normalizeThumbnailUrl
+  getDriveThumbnailUrl
 } from "@/lib/drive";
 import { addVideo } from "@/lib/db";
 import { useAuth } from "@/context/AuthContext";
@@ -33,7 +30,6 @@ interface UploadModalProps {
 export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const thumbInputRef = useRef<HTMLInputElement>(null);
 
   // Link & Parsed State
   const [videoInput, setVideoInput] = useState("");
@@ -44,7 +40,6 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("Web Development");
   const [tagsInput, setTagsInput] = useState("codershigh, tech");
-  const [customThumbnail, setCustomThumbnail] = useState("");
   const [duration, setDuration] = useState("15:00");
 
   // UI state
@@ -54,27 +49,12 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
   if (!isOpen) return null;
 
-  const handleThumbnailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setCustomThumbnail(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleVideoUrlChange = (value: string) => {
     setVideoInput(value);
     setErrorMessage("");
     const parsed = parseVideoUrl(value);
     if (parsed) {
       setFileId(parsed.id);
-      if (parsed.thumbnailUrl && !customThumbnail) {
-        setCustomThumbnail(parsed.thumbnailUrl);
-      }
     } else {
       setFileId(null);
     }
@@ -108,9 +88,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
       const details = parseVideoUrl(videoInput);
       const embedUrl = details?.embedUrl || getDriveEmbedUrl(fileId);
       const driveUrl = details?.viewUrl || `https://drive.google.com/file/d/${fileId}/view`;
-      const thumbnail = customThumbnail.trim() 
-        ? normalizeThumbnailUrl(customThumbnail.trim()) 
-        : (details?.thumbnailUrl || getDriveThumbnailUrl(fileId));
+      const thumbnail = details?.thumbnailUrl || getDriveThumbnailUrl(fileId);
 
       const newVideo = await addVideo({
         title: title.trim(),
@@ -240,14 +218,12 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 </div>
               ) : (
                 <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-[#141622] border border-[#242738] flex flex-col items-center justify-center p-4 text-center">
-                  {customThumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={customThumbnail}
-                      alt="Thumbnail Preview"
-                      className="absolute inset-0 h-full w-full object-cover opacity-50"
-                    />
-                  ) : null}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://drive.google.com/thumbnail?id=${fileId}&sz=w1280`}
+                    alt="Thumbnail Preview"
+                    className="absolute inset-0 h-full w-full object-cover opacity-50"
+                  />
                   <div className="relative z-10 space-y-2 bg-black/80 backdrop-blur-md p-4 rounded-xl max-w-sm border border-white/10">
                     <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
                       <CheckCircle2 className="h-4 w-4" />
@@ -333,80 +309,6 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             />
           </div>
 
-          {/* Thumbnail Section with Live 16:9 Preview & Image File Upload */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <ImageIcon className="h-3.5 w-3.5 text-amber-400" />
-                Thumbnail Image
-              </span>
-              <span className="text-[10px] text-zinc-500 font-normal normal-case">
-                Upload image from computer or paste link
-              </span>
-            </label>
-
-            <div className="flex flex-col sm:flex-row items-start gap-4 p-3 rounded-2xl border border-[#272b3c] bg-[#161826]">
-              {/* Live 16:9 Thumbnail Preview */}
-              <div className="relative aspect-video w-full sm:w-48 rounded-xl overflow-hidden bg-black border border-white/10 shrink-0">
-                {customThumbnail ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={normalizeThumbnailUrl(customThumbnail)}
-                    alt="Thumbnail Preview"
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      const match = customThumbnail.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/) || customThumbnail.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                      if (match && match[1]) {
-                        (e.target as HTMLImageElement).src = `https://lh3.googleusercontent.com/d/${match[1]}=w1280`;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500 text-[11px] p-2 text-center">
-                    <ImageIcon className="h-5 w-5 mb-1 opacity-50" />
-                    <span>No thumbnail selected</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Upload Thumbnail Button & URL Input */}
-              <div className="flex-1 w-full space-y-2">
-                <input
-                  type="file"
-                  ref={thumbInputRef}
-                  onChange={handleThumbnailFileSelect}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => thumbInputRef.current?.click()}
-                    className="flex items-center gap-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 px-3.5 py-1.5 text-xs font-semibold transition shadow-sm"
-                  >
-                    <UploadCloud className="h-3.5 w-3.5" />
-                    <span>Upload Thumbnail Image</span>
-                  </button>
-                  {customThumbnail && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomThumbnail("")}
-                      className="text-xs text-zinc-400 hover:text-rose-400 transition px-2 py-1"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  value={customThumbnail.startsWith("data:image/") ? "" : customThumbnail}
-                  onChange={(e) => setCustomThumbnail(e.target.value)}
-                  placeholder="Or paste image URL (Google Drive, Unsplash...)"
-                  className="w-full rounded-xl border border-[#272b3c] bg-[#11131c] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Tags */}
           <div className="space-y-1.5">
