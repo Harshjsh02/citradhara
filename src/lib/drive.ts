@@ -111,6 +111,39 @@ export function getDriveThumbnailUrl(fileIdOrUrl: string): string {
   return `https://drive.google.com/thumbnail?id=${fileIdOrUrl}&sz=w1280`;
 }
 
+export function normalizeThumbnailUrl(urlOrId: string): string {
+  if (!urlOrId) return "";
+  const trimmed = urlOrId.trim();
+
+  // If it's a base64 data URL from video frame capture
+  if (trimmed.startsWith("data:image/")) {
+    return trimmed;
+  }
+
+  // Check for Google Drive file link (e.g. drive.google.com/file/d/1GHC3q5CNdtrOYL1-05zOQXOU-u9FClyf/view)
+  const driveIdMatch =
+    trimmed.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/) ||
+    trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (driveIdMatch && driveIdMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1280`;
+  }
+
+  // Check for YouTube link
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
+  );
+  if (ytMatch && ytMatch[1]) {
+    return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  }
+
+  // If it's a raw Drive ID
+  if (/^[a-zA-Z0-9_-]{20,50}$/.test(trimmed)) {
+    return `https://drive.google.com/thumbnail?id=${trimmed}&sz=w1280`;
+  }
+
+  return trimmed;
+}
+
 export function validateDriveUrl(url: string): { valid: boolean; fileId: string | null; error?: string } {
   const details = parseVideoUrl(url);
   if (!details) {

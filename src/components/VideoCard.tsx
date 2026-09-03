@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { CheckCircle2, Play, Film } from "lucide-react";
 import { Video } from "@/types";
+import { normalizeThumbnailUrl } from "@/lib/drive";
 
 interface VideoCardProps {
   video: Video;
@@ -32,6 +33,7 @@ export default function VideoCard({ video }: VideoCardProps) {
 
   // Fallback high-res cover if the provided thumbnail URL fails or is invalid
   const fallbackCover = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1280&q=80";
+  const cleanThumb = normalizeThumbnailUrl(video.thumbnailUrl);
 
   return (
     <div className="group flex flex-col space-y-2.5">
@@ -42,7 +44,7 @@ export default function VideoCard({ video }: VideoCardProps) {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={imgError || !video.thumbnailUrl ? fallbackCover : video.thumbnailUrl}
+          src={imgError || !cleanThumb ? fallbackCover : cleanThumb}
           alt={video.title}
           onError={() => setImgError(true)}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-102"
