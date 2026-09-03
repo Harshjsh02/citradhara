@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
 import { 
+  parseVideoUrl,
   extractDriveFileId, 
   getDriveEmbedUrl, 
   getDriveThumbnailUrl,
@@ -66,6 +67,46 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
   if (!isOpen) return null;
 
+  const extractThumbnailFromVideo = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      try {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        video.src = url;
+
+        video.onloadeddata = () => {
+          video.currentTime = Math.min(1.0, (video.duration || 2) / 2);
+        };
+
+        video.onseeked = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1280;
+          canvas.height = 720;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            URL.revokeObjectURL(url);
+            resolve(dataUrl);
+            return;
+          }
+          URL.revokeObjectURL(url);
+          resolve("");
+        };
+
+        video.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve("");
+        };
+      } catch {
+        resolve("");
+      }
+    });
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -78,8 +119,15 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
     setSelectedFile(file);
     setErrorMessage("");
-    setIsUploadingToDrive(true);
 
+    // Automatically extract real video thumbnail frame from the video
+    extractThumbnailFromVideo(file).then((thumb) => {
+      if (thumb) {
+        setCustomThumbnail(thumb);
+      }
+    });
+
+    setIsUploadingToDrive(true);
     try {
       const result = await uploadVideoFileToDrive(file, (progress) => {
         setUploadProgress(progress);
@@ -89,7 +137,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         setFileId(result.fileId);
         setDriveInput(result.url || `https://drive.google.com/file/d/${result.fileId}/view`);
       } else {
-        setErrorMessage(result.error || "Failed to upload file to Google Drive.");
+        setErrorMessage(result.error || "Failed to upload file.");
       }
     } catch (err: any) {
       setErrorMessage(err.message || "File upload failed.");
@@ -101,8 +149,15 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const handleDriveUrlChange = (value: string) => {
     setDriveInput(value);
     setErrorMessage("");
-    const extracted = extractDriveFileId(value);
-    setFileId(extracted);
+    const parsed = parseVideoUrl(value);
+    if (parsed) {
+      setFileId(parsed.id);
+      if (parsed.thumbnailUrl) {
+        setCustomThumbnail(parsed.thumbnailUrl);
+      }
+    } else {
+      setFileId(null);
+    }
   };
 
   const handlePublish = async (e: React.FormEvent) => {
@@ -204,7 +259,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             }`}
           >
             <LinkIcon className="h-4 w-4" />
-            <span>Paste Google Drive Link</span>
+            <span>Paste Video Link (Drive or YouTube)</span>
           </button>
         </div>
 
@@ -326,10 +381,10 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
           {uploadMethod === "link" && (
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
-                <span>Google Drive Share Link or File ID *</span>
+                <span>Google Drive or YouTube Link *</span>
                 {fileId && (
                   <span className="flex items-center gap-1 text-[11px] text-emerald-400 normal-case font-medium">
-                    <CheckCircle2 className="h-3 w-3" /> Valid File ID: {fileId.slice(0, 8)}...
+                    <CheckCircle2 className="h-3 w-3" /> Valid Link Detected
                   </span>
                 )}
               </label>
@@ -337,7 +392,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 type="text"
                 value={driveInput}
                 onChange={(e) => handleDriveUrlChange(e.target.value)}
-                placeholder="https://drive.google.com/file/d/1A2B3C.../view?usp=sharing"
+                placeholder="Paste Google Drive link (e.g. drive.google.com/file/d/...) or YouTube link (e.g. youtu.be/...)"
                 className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition"
               />
             </div>
