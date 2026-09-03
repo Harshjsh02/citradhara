@@ -23,8 +23,7 @@ import {
   extractDriveFileId, 
   getDriveEmbedUrl, 
   getDriveThumbnailUrl,
-  DEFAULT_COMMUNITY_FOLDER_URL,
-  DEFAULT_COMMUNITY_FOLDER_ID
+  DEFAULT_COMMUNITY_FOLDER_URL
 } from "@/lib/drive";
 import { uploadVideoFileToDrive, DriveUploadProgress } from "@/lib/driveUpload";
 import { addVideo } from "@/lib/db";
@@ -220,7 +219,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
               <div>
                 <p className="text-xs font-bold text-white">Official CodersHigh Drive Storage</p>
                 <p className="text-[11px] text-zinc-400">
-                  Folder ID: <span className="text-amber-400 font-mono">{DEFAULT_COMMUNITY_FOLDER_ID.slice(0, 12)}...</span>
+                  Connected • Free community video cloud
                 </p>
               </div>
             </div>
@@ -364,9 +363,9 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                   You can accept video uploads straight into your Google Drive folder for <strong>100% free</strong> without any server bills:
                 </p>
                 <div className="rounded-xl bg-black/60 p-3 font-mono text-[11px] text-zinc-300 space-y-1">
-                  <p className="text-amber-400">// Target Folder: {DEFAULT_COMMUNITY_FOLDER_ID}</p>
-                  <p className="text-zinc-400">// 1. Drop video in the CodersHigh folder or browse file above</p>
-                  <p className="text-emerald-400">// 2. Videos stream with adaptive speed and 0 bandwidth cost!</p>
+                  <p className="text-amber-400">// 1. Drop your video in the official folder or upload here</p>
+                  <p className="text-zinc-400">// 2. Set sharing to &quot;Anyone with the link can view&quot;</p>
+                  <p className="text-emerald-400">// 3. Videos stream with adaptive speed and 0 bandwidth cost!</p>
                 </div>
               </div>
             )}
