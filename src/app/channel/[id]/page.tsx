@@ -28,13 +28,19 @@ export default function ChannelPage() {
   const [channelBio, setChannelBio] = useState("Creator and active contributor in the CodersHigh community.");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Check if this is strictly the user's own channel
   const isOwnChannel = Boolean(user && user.uid && (user.uid === channelId || (!channelId && !!user)));
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     async function load() {
