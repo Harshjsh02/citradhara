@@ -138,6 +138,15 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setSelectedFile(file);
     setErrorMessage("");
 
+    // Limit check for direct cloud uploads (100 MB recommended for browser cloud streaming)
+    const MAX_DIRECT_UPLOAD_MB = 100;
+    if (file.size > MAX_DIRECT_UPLOAD_MB * 1024 * 1024) {
+      setErrorMessage(
+        `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Direct cloud upload is limited to ${MAX_DIRECT_UPLOAD_MB} MB. For larger videos, please switch to the "Paste Video Link" tab to stream directly from Google Drive or YouTube without any size limits.`
+      );
+      return;
+    }
+
     // Automatically extract real video thumbnail frame from the video
     extractThumbnailFromVideo(file).then((thumb) => {
       if (thumb) {
