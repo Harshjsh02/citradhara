@@ -352,7 +352,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px] text-zinc-400">
                         <span>
-                          {isUploadingToDrive ? "Uploading directly to Google Drive..." : "Uploaded to Google Drive!"}
+                          {isUploadingToDrive ? "Uploading video file..." : "Uploaded successfully!"}
                         </span>
                         <span className="font-mono text-amber-400 font-bold">{uploadProgress.percentage}%</span>
                       </div>
@@ -368,7 +368,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                   {fileId && !isUploadingToDrive && (
                     <div className="flex items-center gap-2 text-xs text-emerald-400 pt-1">
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>Ready to stream from Google Drive Cloud</span>
+                      <span>Ready to stream</span>
                     </div>
                   )}
                 </div>
@@ -504,9 +504,15 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 {customThumbnail ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={customThumbnail}
+                    src={normalizeThumbnailUrl(customThumbnail)}
                     alt="Thumbnail Preview"
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const match = customThumbnail.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/) || customThumbnail.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                      if (match && match[1]) {
+                        (e.target as HTMLImageElement).src = `https://lh3.googleusercontent.com/d/${match[1]}=w1280`;
+                      }
+                    }}
                   />
                 ) : (
                   <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500 text-[11px] p-2 text-center">
@@ -571,9 +577,21 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
           {/* Error message */}
           {errorMessage && (
-            <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 space-y-2.5 text-xs text-rose-300 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadMethod("link");
+                  setErrorMessage("");
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 px-3.5 py-1.5 text-xs font-bold transition shadow-sm"
+              >
+                <span>👉 Switch to &quot;Paste Video Link&quot; Tab</span>
+              </button>
             </div>
           )}
 

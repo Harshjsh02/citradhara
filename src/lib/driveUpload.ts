@@ -22,7 +22,7 @@ export interface DriveUploadResponse {
 
 /**
  * Uploads a video file directly to Firebase Cloud Storage.
- * Generates a direct streaming URL that works natively in HTML5 video.
+ * Includes CORS and preflight timeout detection so users aren't left frozen.
  */
 export async function uploadVideoFileToDrive(
   file: File,
@@ -37,9 +37,28 @@ export async function uploadVideoFileToDrive(
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       return await new Promise<DriveUploadResponse>((resolve) => {
+        let hasTransferred = false;
+
+        // If after 4.5 seconds 0 bytes transferred due to CORS preflight failure, notify user immediately
+        const timeoutId = setTimeout(() => {
+          if (!hasTransferred) {
+            try {
+              uploadTask.cancel();
+            } catch {}
+            resolve({
+              success: false,
+              error:
+                "Direct browser upload blocked by Cloud Storage CORS. Please use the 'Paste Video Link' tab to stream directly from Google Drive or YouTube (100% free with unlimited streaming).",
+            });
+          }
+        }, 4500);
+
         uploadTask.on(
           "state_changed",
           (snapshot) => {
+            if (snapshot.bytesTransferred > 0) {
+              hasTransferred = true;
+            }
             const percentage = Math.round(
               (snapshot.bytesTransferred / snapshot.totalBytes) * 100
             );
@@ -52,16 +71,16 @@ export async function uploadVideoFileToDrive(
             }
           },
           (error) => {
-            console.warn("Firebase Storage upload error (falling back to local media blob):", error);
-            // Fallback: If Firebase Storage rules block write, use direct object URL so the video can still stream immediately!
-            const localUrl = URL.createObjectURL(file);
+            clearTimeout(timeoutId);
+            console.warn("Firebase Storage upload error:", error);
             resolve({
-              success: true,
-              fileId: localUrl,
-              url: localUrl,
+              success: false,
+              error:
+                "Firebase Storage CORS blocked the upload. Please use the 'Paste Video Link' tab to stream directly from Google Drive or YouTube.",
             });
           },
           async () => {
+            clearTimeout(timeoutId);
             try {
               const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
               resolve({
@@ -70,11 +89,9 @@ export async function uploadVideoFileToDrive(
                 url: downloadUrl,
               });
             } catch (err) {
-              const localUrl = URL.createObjectURL(file);
               resolve({
-                success: true,
-                fileId: localUrl,
-                url: localUrl,
+                success: false,
+                error: "Failed retrieving permanent streaming URL from cloud storage.",
               });
             }
           }
@@ -82,6 +99,10 @@ export async function uploadVideoFileToDrive(
       });
     } catch (err: any) {
       console.warn("Direct upload error:", err);
+      return {
+        success: false,
+        error: err.message || "Failed initializing cloud upload.",
+      };
     }
   }
 
@@ -112,15 +133,9 @@ export async function uploadVideoFileToDrive(
     }
   }
 
-  // Option 3: Local session stream fallback
-  const localUrl = URL.createObjectURL(file);
-  if (onProgress) {
-    onProgress({ loaded: file.size, total: file.size, percentage: 100 });
-  }
   return {
-    success: true,
-    fileId: localUrl,
-    url: localUrl,
+    success: false,
+    error: "Direct storage endpoint not connected. Please paste your Google Drive or YouTube link to stream.",
   };
 }
 
