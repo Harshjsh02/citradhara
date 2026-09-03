@@ -26,25 +26,30 @@ const STORAGE_KEYS = {
 
 // Local storage helpers
 function getLocalVideos(): Video[] {
-  if (typeof window === "undefined") return INITIAL_VIDEOS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.VIDEOS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(INITIAL_VIDEOS));
-      return INITIAL_VIDEOS;
+      return [];
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Video[];
+    const clean = parsed.filter((v) => !v.id.startsWith("citra-"));
+    if (clean.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(clean));
+    }
+    return clean;
   } catch {
-    return INITIAL_VIDEOS;
+    return [];
   }
 }
 
 function saveLocalVideos(videos: Video[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
+    const clean = videos.filter((v) => !v.id.startsWith("citra-"));
+    localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(clean));
   } catch (e) {
-    console.error("Failed saving local videos:", e);
+    console.error("Failed saving videos:", e);
   }
 }
 
@@ -96,13 +101,18 @@ export async function fetchVideos(category?: string, searchQuery?: string): Prom
       const snapshot = await withTimeout(getDocs(q), 2500);
       
       if (!snapshot.empty) {
-        videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Video));
+        videos = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Video))
+          .filter((v) => !v.id.startsWith("citra-"));
+
+        // Asynchronously delete any leftover dummy seed documents from Firestore
+        snapshot.docs.forEach((docSnap) => {
+          if (docSnap.id.startsWith("citra-")) {
+            deleteDoc(docSnap.ref).catch(() => {});
+          }
+        });
       } else {
-        // If Firestore is empty, seed it with initial videos
-        videos = INITIAL_VIDEOS;
-        for (const v of INITIAL_VIDEOS) {
-          withTimeout(setDoc(doc(db, "videos", v.id), v), 2000).catch(() => {});
-        }
+        videos = [];
       }
     } catch (err) {
       console.warn("Firestore fetch error / blocked by client, falling back to local:", err);

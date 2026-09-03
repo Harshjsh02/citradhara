@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
@@ -113,6 +114,23 @@ function HomeFeed() {
               </div>
             )}
           </div>
+
+          {/* Footer with Creator Credit */}
+          <footer className="mt-20 border-t border-[#161620] py-8 text-center text-xs text-zinc-500">
+            <p className="flex items-center justify-center gap-1.5 font-semibold text-zinc-300">
+              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+              <span>Citradhara • चित्रधारा</span>
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              A Stream of Wonders — Created & Designed by{" "}
+              <Link
+                href="/channel/Uhwkq06XRuOHEGdrs4LbqVtoOGc2"
+                className="text-amber-400 hover:text-amber-300 font-bold transition"
+              >
+                Harsh Joshi
+              </Link>
+            </p>
+          </footer>
         </main>
       </div>
 

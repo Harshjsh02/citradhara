@@ -119,10 +119,26 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
           </div>
         </div>
 
-        {/* Minimal Footer */}
-        <div className={`border-t border-[#161620] pt-3 px-3 text-[10px] text-zinc-600 space-y-0.5 ${!isOpen ? "lg:hidden" : ""}`}>
-          <p className="text-zinc-500 font-medium">Citradhara • चित्रधारा</p>
-          <p>A Stream of Wonders</p>
+        {/* Minimal Footer & Creator Credit */}
+        <div className={`border-t border-[#161620] pt-4 px-3 space-y-2 ${!isOpen ? "lg:hidden" : ""}`}>
+          <div>
+            <p className="text-zinc-400 font-semibold text-xs flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-amber-400" />
+              <span>Citradhara • चित्रधारा</span>
+            </p>
+            <p className="text-[10px] text-zinc-500">A Stream of Wonders</p>
+          </div>
+          <div className="pt-2 border-t border-[#181822]">
+            <p className="text-[11px] text-zinc-400 leading-snug">
+              Created & Designed by{" "}
+              <Link
+                href="/channel/Uhwkq06XRuOHEGdrs4LbqVtoOGc2"
+                className="text-amber-400 hover:text-amber-300 font-bold transition inline-flex items-center gap-1"
+              >
+                Harsh Joshi
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </aside>
