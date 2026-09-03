@@ -75,6 +75,16 @@ function saveLocalComments(videoId: string, comments: Comment[]): void {
 // Core Database APIs
 // -------------------------------------------------------------
 
+// Timeout wrapper to prevent hanging when adblockers or Brave Shields block firestore.googleapis.com
+function withTimeout<T>(promise: Promise<T>, ms: number = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Firestore request timed out or blocked by client")), ms)
+    ),
+  ]);
+}
+
 export async function fetchVideos(category?: string, searchQuery?: string): Promise<Video[]> {
   let videos: Video[] = [];
 
@@ -82,7 +92,7 @@ export async function fetchVideos(category?: string, searchQuery?: string): Prom
     try {
       const videosRef = collection(db, "videos");
       const q = query(videosRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
+      const snapshot = await withTimeout(getDocs(q), 2500);
       
       if (!snapshot.empty) {
         videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Video));
@@ -90,11 +100,11 @@ export async function fetchVideos(category?: string, searchQuery?: string): Prom
         // If Firestore is empty, seed it with initial videos
         videos = INITIAL_VIDEOS;
         for (const v of INITIAL_VIDEOS) {
-          await setDoc(doc(db, "videos", v.id), v);
+          withTimeout(setDoc(doc(db, "videos", v.id), v), 2000).catch(() => {});
         }
       }
     } catch (err) {
-      console.warn("Firestore fetch error, falling back to local:", err);
+      console.warn("Firestore fetch error / blocked by client, falling back to local:", err);
       videos = getLocalVideos();
     }
   } else {
@@ -124,7 +134,7 @@ export async function fetchVideoById(id: string): Promise<Video | null> {
   if (isFirebaseConfigured && db) {
     try {
       const docRef = doc(db, "videos", id);
-      const snapshot = await getDoc(docRef);
+      const snapshot = await withTimeout(getDoc(docRef), 2500);
       if (snapshot.exists()) {
         return { id: snapshot.id, ...snapshot.data() } as Video;
       }
@@ -212,7 +222,7 @@ export async function fetchComments(videoId: string): Promise<Comment[]> {
     try {
       const commentsRef = collection(db, `videos/${videoId}/comments`);
       const q = query(commentsRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
+      const snapshot = await withTimeout(getDocs(q), 2500);
       if (!snapshot.empty) {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
       }
