@@ -33,11 +33,8 @@ export default function ChannelPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Check if this is the user's own channel
-  const isOwnChannel = 
-    (user && user.uid === channelId) || 
-    (user && !channelId) ||
-    Boolean(user && videos.some(v => v.uploaderUid === user.uid));
+  // Check if this is strictly the user's own channel
+  const isOwnChannel = Boolean(user && user.uid && (user.uid === channelId || (!channelId && !!user)));
 
   useEffect(() => {
     async function load() {
@@ -261,8 +258,8 @@ export default function ChannelPage() {
                   {videos.map((v) => (
                     <div key={v.id} className="flex flex-col space-y-2 group/item">
                       <VideoCard video={v} />
-                      {/* Delete Action for Owner */}
-                      {isOwnChannel && (
+                      {/* Delete Action strictly for Owner */}
+                      {isOwnChannel && user && (v.uploaderUid === user.uid || v.uploaderHandle === channelHandle) && (
                         <div className="flex items-center justify-between px-1 pt-1">
                           <span className="text-[10px] text-zinc-500">{v.duration || "Stream"}</span>
                           <button

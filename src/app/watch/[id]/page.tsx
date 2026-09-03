@@ -291,18 +291,6 @@ export default function WatchPage() {
                   <HardDrive className="h-3.5 w-3.5 text-amber-400" />
                   <span>Drive</span>
                 </a>
-
-                {/* Delete Stream Button (Owner) */}
-                {isOwner && (
-                  <button
-                    onClick={handleDeleteVideo}
-                    title="Delete this stream"
-                    className="flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 px-3.5 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
-                  </button>
-                )}
               </div>
             </div>
 

@@ -24,6 +24,7 @@ import {
   extractDriveFileId, 
   getDriveEmbedUrl, 
   getDriveThumbnailUrl,
+  normalizeThumbnailUrl,
   DEFAULT_COMMUNITY_FOLDER_URL
 } from "@/lib/drive";
 import { uploadVideoFileToDrive, DriveUploadProgress } from "@/lib/driveUpload";
@@ -183,14 +184,19 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean);
 
-      const thumbnail = customThumbnail.trim() || getDriveThumbnailUrl(fileId);
+      const details = parseVideoUrl(fileId);
+      const embedUrl = details?.embedUrl || getDriveEmbedUrl(fileId);
+      const driveUrl = details?.viewUrl || (fileId.startsWith("http") || fileId.startsWith("blob:") ? fileId : `https://drive.google.com/file/d/${fileId}/view`);
+      const thumbnail = customThumbnail.trim() 
+        ? normalizeThumbnailUrl(customThumbnail.trim()) 
+        : (details?.thumbnailUrl || getDriveThumbnailUrl(fileId));
 
       const newVideo = await addVideo({
         title: title.trim(),
         description: description.trim() || "Shared by the CodersHigh community on Citradhara - A Stream of Wonders.",
         driveFileId: fileId,
-        driveUrl: `https://drive.google.com/file/d/${fileId}/view`,
-        embedUrl: getDriveEmbedUrl(fileId),
+        driveUrl,
+        embedUrl,
         thumbnailUrl: thumbnail,
         uploaderUid,
         uploaderName,
@@ -222,7 +228,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Stream Video to Citradhara</h2>
-              <p className="text-[11px] text-amber-400">Stores directly on your Google Drive Cloud</p>
+              <p className="text-[11px] text-amber-400">Direct Cloud Upload or Video Link</p>
             </div>
           </div>
           <button
@@ -246,7 +252,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             }`}
           >
             <UploadCloud className="h-4 w-4" />
-            <span>Upload Video File (From Computer)</span>
+            <span>Upload Video File (Direct Cloud)</span>
           </button>
 
           <button
@@ -259,36 +265,12 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             }`}
           >
             <LinkIcon className="h-4 w-4" />
-            <span>Paste Video Link (Drive or YouTube)</span>
+            <span>Paste Video Link (YouTube or Drive)</span>
           </button>
         </div>
 
         {/* Modal Form */}
         <form onSubmit={handlePublish} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* Community Google Drive Storage Banner */}
-          <div className="flex items-center justify-between rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 p-3.5 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
-                <HardDrive className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">Official CodersHigh Drive Storage</p>
-                <p className="text-[11px] text-zinc-400">
-                  Connected • Free community video cloud
-                </p>
-              </div>
-            </div>
-            <a
-              href={DEFAULT_COMMUNITY_FOLDER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-full bg-[#1b1d2a] hover:bg-[#252839] border border-amber-500/30 px-3.5 py-1.5 text-xs font-semibold text-amber-300 hover:text-white transition shadow-sm"
-            >
-              <span>Open Folder</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-
           {/* Method 1: File Dropzone */}
           {uploadMethod === "file" && (
             <div className="space-y-3">
@@ -309,7 +291,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                     <FileVideo className="h-7 w-7" />
                   </div>
                   <p className="text-sm font-bold text-white mb-1">
-                    Select video to upload to your Google Drive
+                    Select or drop video file directly
                   </p>
                   <p className="text-xs text-zinc-400 mb-4">
                     Supports MP4, WebM, MOV, MKV files
@@ -398,34 +380,6 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </div>
           )}
 
-          {/* Setup Guide Accordion */}
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3.5">
-            <button
-              type="button"
-              onClick={() => setShowDriveGuide(!showDriveGuide)}
-              className="flex w-full items-center justify-between text-xs font-semibold text-amber-300"
-            >
-              <span className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-amber-400" />
-                How community uploads to your Google Drive work
-              </span>
-              <HelpCircle className="h-4 w-4" />
-            </button>
-
-            {showDriveGuide && (
-              <div className="mt-3 space-y-2 text-xs text-zinc-300 border-t border-amber-500/20 pt-2 leading-relaxed">
-                <p>
-                  You can accept video uploads straight into your Google Drive folder for <strong>100% free</strong> without any server bills:
-                </p>
-                <div className="rounded-xl bg-black/60 p-3 font-mono text-[11px] text-zinc-300 space-y-1">
-                  <p className="text-amber-400">// 1. Drop your video in the official folder or upload here</p>
-                  <p className="text-zinc-400">// 2. Set sharing to &quot;Anyone with the link can view&quot;</p>
-                  <p className="text-emerald-400">// 3. Videos stream with adaptive speed and 0 bandwidth cost!</p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Video Preview if file ID parsed */}
           {fileId && (
             <div className="rounded-2xl border border-[#262a3c] bg-black p-3 space-y-2">
@@ -434,12 +388,21 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 Stream Preview:
               </p>
               <div className="aspect-video w-full rounded-xl overflow-hidden bg-zinc-950">
-                <iframe
-                  src={getDriveEmbedUrl(fileId)}
-                  title="Preview"
-                  className="h-full w-full border-0"
-                  allow="autoplay; fullscreen"
-                />
+                {fileId.startsWith("blob:") || fileId.includes("firebasestorage") || fileId.match(/\.(mp4|webm|mov)($|\?)/i) ? (
+                  <video
+                    src={fileId}
+                    controls
+                    playsInline
+                    className="h-full w-full object-contain bg-black"
+                  />
+                ) : (
+                  <iframe
+                    src={getDriveEmbedUrl(fileId)}
+                    title="Preview"
+                    className="h-full w-full border-0"
+                    allow="autoplay; fullscreen"
+                  />
+                )}
               </div>
             </div>
           )}
