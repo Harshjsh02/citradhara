@@ -14,6 +14,7 @@ import {
   Mic, 
   Palette, 
   Tv, 
+  Video,
   History, 
   ThumbsUp, 
   HardDrive,
@@ -38,6 +39,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Podcasts & Talks": <Mic className="h-4 w-4 text-zinc-300" />,
   "Art & Animation": <Palette className="h-4 w-4 text-zinc-300" />,
   "Culture & Travel": <Compass className="h-4 w-4 text-zinc-300" />,
+  "Vlogs": <Video className="h-4 w-4 text-zinc-300" />,
   "Documentaries": <Tv className="h-4 w-4 text-zinc-300" />
 };
 

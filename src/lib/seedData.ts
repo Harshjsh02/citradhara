@@ -126,6 +126,27 @@ export const INITIAL_VIDEOS: Video[] = [
     commentsCount: 65,
     duration: "38:50",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9).toISOString(),
+  },
+  {
+    id: "citra-7",
+    title: "A Day in the Mountains: Cinematic Filmmaking, Quiet Routines & Solo Vlog",
+    description: "Waking up above the clouds in the Himalayas. Join me for a day of capturing mountain timelapses, creative routines, and thoughts on visual storytelling.",
+    driveFileId: "1z8x7c6v5b4n3m2l1",
+    driveUrl: "https://drive.google.com/file/d/1z8x7c6v5b4n3m2l1/view",
+    embedUrl: "https://drive.google.com/file/d/1z8x7c6v5b4n3m2l1/preview",
+    thumbnailUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1280&q=80",
+    uploaderUid: "user_vlogger",
+    uploaderName: "Kabir Trails",
+    uploaderHandle: "kabir_vlogs",
+    uploaderAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80",
+    category: "Vlogs",
+    tags: ["vlog", "travel", "mountains", "filmmaking", "routine"],
+    views: 37800,
+    likesCount: 3410,
+    dislikesCount: 15,
+    commentsCount: 88,
+    duration: "18:25",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
   }
 ];
 

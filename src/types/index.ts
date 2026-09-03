@@ -53,6 +53,7 @@ export type Category =
   | 'Podcasts & Talks'
   | 'Art & Animation'
   | 'Culture & Travel'
+  | 'Vlogs'
   | 'Documentaries';
 
 export const CATEGORIES: Category[] = [
@@ -65,5 +66,6 @@ export const CATEGORIES: Category[] = [
   'Podcasts & Talks',
   'Art & Animation',
   'Culture & Travel',
+  'Vlogs',
   'Documentaries'
 ];
