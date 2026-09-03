@@ -41,7 +41,7 @@ export default function LikedVideosPage() {
       />
 
       <div className="flex">
-        <Sidebar isOpen={isSidebarOpen} />
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
         <main
           className={`flex-1 px-4 sm:px-6 py-6 transition-all duration-300 ${

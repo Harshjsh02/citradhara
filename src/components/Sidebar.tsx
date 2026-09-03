@@ -24,6 +24,7 @@ interface SidebarProps {
   isOpen: boolean;
   selectedCategory?: string;
   onSelectCategory?: (category: string) => void;
+  onClose?: () => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -40,15 +41,24 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Documentaries": <Tv className="h-4 w-4 text-zinc-300" />
 };
 
-export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCategory }: SidebarProps) {
+export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCategory, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col border-r border-[#161620] bg-[#08080a] transition-all duration-300 overflow-y-auto ${
-        isOpen ? "w-60" : "w-0 -translate-x-full lg:w-16 lg:translate-x-0"
-      }`}
-    >
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-xs lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col border-r border-[#161620] bg-[#08080a] transition-all duration-300 overflow-y-auto ${
+          isOpen ? "w-60" : "w-0 -translate-x-full lg:w-16 lg:translate-x-0"
+        }`}
+      >
       <div className="flex-1 space-y-5 py-3 px-2">
         {/* Main Feed Links */}
         <div className="space-y-0.5">
@@ -142,5 +152,6 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
         </div>
       </div>
     </aside>
+    </>
   );
 }

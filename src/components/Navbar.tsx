@@ -28,6 +28,7 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
   const router = useRouter();
   const { user, signInWithGoogle, signOut, isFirebaseActive } = useAuth();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -99,6 +100,15 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
 
       {/* Right: Minimal Actions & Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile Search Button */}
+        <button
+          onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+          aria-label="Search streams"
+          className="sm:hidden rounded-full p-2 text-zinc-400 hover:bg-[#161620] hover:text-white transition"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+
         {/* Upload Button */}
         <button
           onClick={onOpenUpload}
@@ -230,6 +240,34 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
           </button>
         )}
       </div>
+
+      {/* Mobile Search Dropdown Bar */}
+      {isMobileSearchOpen && (
+        <div className="absolute top-14 left-0 right-0 z-50 border-b border-[#20202c] bg-[#0c0c12] p-3 sm:hidden shadow-2xl">
+          <form onSubmit={(e) => { handleSearch(e); setIsMobileSearchOpen(false); }}>
+            <div className="relative flex w-full items-center rounded-full border border-[#2c2c3e] bg-[#14141c] px-3.5 py-2">
+              <Search className="h-4 w-4 text-zinc-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search streams of wonder..."
+                className="w-full bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-zinc-500 hover:text-white mr-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
     </header>
   );
 }

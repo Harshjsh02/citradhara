@@ -127,7 +127,7 @@ export default function ChannelPage() {
       />
 
       <div className="flex">
-        <Sidebar isOpen={isSidebarOpen} />
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
         <main
           className={`flex-1 min-w-0 transition-all duration-300 ${

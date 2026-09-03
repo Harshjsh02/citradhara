@@ -45,6 +45,7 @@ function HomeFeed() {
           isOpen={isSidebarOpen}
           selectedCategory={selectedCategory}
           onSelectCategory={(cat) => setSelectedCategory(cat)}
+          onClose={() => setIsSidebarOpen(false)}
         />
 
         <main
