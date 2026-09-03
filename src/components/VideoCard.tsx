@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { CheckCircle2, Play, HardDrive } from "lucide-react";
+import { CheckCircle2, Play } from "lucide-react";
 import { Video } from "@/types";
 
 interface VideoCardProps {
@@ -29,71 +29,63 @@ export default function VideoCard({ video }: VideoCardProps) {
   }
 
   return (
-    <div className="group flex flex-col space-y-3">
-      {/* Thumbnail Container */}
+    <div className="group flex flex-col space-y-2.5">
+      {/* Minimal 16:9 Thumbnail */}
       <Link
         href={`/watch/${video.id}`}
-        className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#151722] border border-[#212433] shadow-md transition-all duration-300 group-hover:border-amber-500/50 group-hover:shadow-amber-500/10"
+        className="relative aspect-video w-full overflow-hidden rounded-xl bg-[#121218] border border-[#181822] shadow-sm transition duration-300"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={video.thumbnailUrl}
           alt={video.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-102"
           loading="lazy"
         />
 
-        {/* Hover play overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-black shadow-lg shadow-amber-500/30">
-            <Play className="h-6 w-6 fill-black ml-0.5" />
+        {/* Minimal Play Hover Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md">
+            <Play className="h-4 w-4 fill-black ml-0.5" />
           </div>
         </div>
 
         {/* Duration Badge */}
-        <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-2 py-0.5 text-xs font-semibold text-white tracking-wider backdrop-blur-sm">
+        <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
           {video.duration || "Stream"}
         </span>
-
-        {/* Google Drive indicator */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-amber-300 backdrop-blur-sm border border-amber-500/20">
-          <HardDrive className="h-3 w-3" />
-          <span>G-Drive</span>
-        </div>
       </Link>
 
       {/* Video Details */}
-      <div className="flex gap-3 px-0.5">
-        {/* Channel Avatar */}
+      <div className="flex gap-2.5 px-0.5">
         <Link
           href={`/channel/${video.uploaderUid}`}
-          className="shrink-0 transition-transform hover:scale-105"
+          className="shrink-0 pt-0.5 transition-opacity hover:opacity-80"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={video.uploaderAvatar}
             alt={video.uploaderName}
-            className="h-9 w-9 rounded-full object-cover border border-[#272a3b]"
+            className="h-8 w-8 rounded-full object-cover border border-[#1f1f2a]"
           />
         </Link>
 
-        {/* Text Details */}
         <div className="flex flex-col min-w-0">
           <Link href={`/watch/${video.id}`}>
-            <h3 className="line-clamp-2 text-sm font-semibold text-zinc-100 leading-snug group-hover:text-amber-400 transition-colors">
+            <h3 className="line-clamp-2 text-xs sm:text-sm font-semibold text-zinc-100 leading-snug group-hover:text-amber-400 transition-colors">
               {video.title}
             </h3>
           </Link>
 
           <Link
             href={`/channel/${video.uploaderUid}`}
-            className="mt-1 flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors truncate"
+            className="mt-1 flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors truncate"
           >
             <span>{video.uploaderName}</span>
-            <CheckCircle2 className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+            <CheckCircle2 className="h-3 w-3 text-zinc-400 shrink-0" />
           </Link>
 
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500 mt-0.5">
+          <div className="flex items-center gap-1 text-[11px] text-zinc-500">
             <span>{formatViewCount(video.views)} views</span>
             <span>•</span>
             <span>{relativeTime}</span>

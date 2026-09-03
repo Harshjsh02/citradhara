@@ -45,25 +45,25 @@ export interface Comment {
 
 export type Category = 
   | 'All'
-  | 'Web Development'
-  | 'Artificial Intelligence'
-  | 'Python & Data'
-  | 'Algorithms & DSA'
-  | 'System Design'
-  | 'DevOps & Cloud'
-  | 'Cinematic Tech Stories'
-  | 'Open Source'
-  | 'Career & Pods';
+  | 'Cinema & Films'
+  | 'Music & Audio'
+  | 'Coding & Tech'
+  | 'Science & Wonders'
+  | 'Gaming'
+  | 'Podcasts & Talks'
+  | 'Art & Animation'
+  | 'Culture & Travel'
+  | 'Documentaries';
 
 export const CATEGORIES: Category[] = [
   'All',
-  'Web Development',
-  'Artificial Intelligence',
-  'Python & Data',
-  'Algorithms & DSA',
-  'System Design',
-  'DevOps & Cloud',
-  'Cinematic Tech Stories',
-  'Open Source',
-  'Career & Pods'
+  'Cinema & Films',
+  'Music & Audio',
+  'Coding & Tech',
+  'Science & Wonders',
+  'Gaming',
+  'Podcasts & Talks',
+  'Art & Animation',
+  'Culture & Travel',
+  'Documentaries'
 ];

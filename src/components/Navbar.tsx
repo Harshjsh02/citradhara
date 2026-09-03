@@ -6,17 +6,16 @@ import { useRouter } from "next/navigation";
 import { 
   Menu, 
   Search, 
-  Video, 
+  Plus, 
   Bell, 
   X, 
   LogOut, 
   User, 
   History, 
   ThumbsUp, 
-  Sparkles, 
-  ExternalLink,
-  ShieldCheck
+  Sparkles
 } from "lucide-react";
+import CitradharaLogo from "./CitradharaLogo";
 import { useAuth } from "@/context/AuthContext";
 
 interface NavbarProps {
@@ -34,7 +33,6 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -58,85 +56,56 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#1f2230] bg-[#090a0f]/95 px-4 backdrop-blur-md">
-      {/* Left: Sidebar Toggle & Brand */}
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#181822] bg-[#08080a]/90 px-4 backdrop-blur-md">
+      {/* Left: Hamburger & Minimal Citradhara Logo */}
+      <div className="flex items-center gap-3 sm:gap-4">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
             aria-label="Toggle sidebar"
-            className="rounded-full p-2 text-zinc-300 hover:bg-[#1b1d2a] hover:text-white transition"
+            className="rounded-full p-2 text-zinc-400 hover:bg-[#161620] hover:text-white transition"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4" />
           </button>
         )}
 
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 via-rose-600 to-indigo-600 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold tracking-tight text-white group-hover:text-amber-400 transition-colors">
-                Citradhara
-              </span>
-              <span className="rounded-md bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 text-[10px] font-semibold text-amber-300 uppercase tracking-wider">
-                CodersHigh
-              </span>
-            </div>
-            <span className="text-[11px] font-medium text-zinc-400 tracking-wide">
-              A Stream of Wonders
-            </span>
-          </div>
-        </Link>
+        <CitradharaLogo size="md" />
       </div>
 
-      {/* Center: Search Bar */}
-      <form onSubmit={handleSearch} className="hidden sm:flex flex-1 max-w-xl mx-4">
+      {/* Center: Minimalist Search Bar */}
+      <form onSubmit={handleSearch} className="hidden sm:flex flex-1 max-w-lg mx-6">
         <div className="relative flex w-full items-center">
-          <div className="relative flex w-full items-center rounded-l-full border border-[#272a3b] bg-[#12131c] px-4 py-2 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500/40">
+          <div className="relative flex w-full items-center rounded-full border border-[#20202c] bg-[#101015] px-3.5 py-1.5 focus-within:border-amber-500/60 focus-within:bg-[#13131b] transition">
+            <Search className="h-3.5 w-3.5 text-zinc-400 mr-2 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search streams of wonder, tech tutorials, code..."
-              className="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none"
+              placeholder="Search streams of wonder, cinema, music, code..."
+              className="w-full bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="text-zinc-400 hover:text-white"
+                className="text-zinc-500 hover:text-white"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
-          <button
-            type="submit"
-            aria-label="Search"
-            className="flex h-[38px] items-center justify-center rounded-r-full border border-l-0 border-[#272a3b] bg-[#1a1c27] px-5 text-zinc-300 hover:bg-[#252839] hover:text-white transition"
-          >
-            <Search className="h-4 w-4" />
-          </button>
         </div>
       </form>
 
-      {/* Right: Actions & Profile */}
+      {/* Right: Minimal Actions & Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Firebase / Free status badge */}
-        <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#151722] border border-[#262838] px-3 py-1 text-xs text-zinc-300">
-          <span className={`h-2 w-2 rounded-full ${isFirebaseActive ? "bg-emerald-500 animate-pulse" : "bg-amber-400"}`} />
-          <span>{isFirebaseActive ? "Firestore Live" : "Demo Mode (Mock)"}</span>
-        </div>
-
-        {/* Upload / Create Button */}
+        {/* Upload Button */}
         <button
           onClick={onOpenUpload}
-          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-600 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-rose-500/20 hover:opacity-95 active:scale-95 transition"
+          className="flex items-center gap-1.5 rounded-full bg-[#181824] hover:bg-[#222232] border border-[#272738] px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:text-white active:scale-95 transition"
         >
-          <Video className="h-4 w-4" />
-          <span className="hidden sm:inline">Stream Video</span>
+          <Plus className="h-3.5 w-3.5 text-amber-400" />
+          <span>Upload</span>
         </button>
 
         {/* Notifications */}
@@ -144,116 +113,90 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             aria-label="Notifications"
-            className="rounded-full p-2 text-zinc-300 hover:bg-[#1b1d2a] hover:text-white transition relative"
+            className="rounded-full p-2 text-zinc-400 hover:bg-[#161620] hover:text-white transition relative"
           >
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+            <Bell className="h-4 w-4" />
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-[#282b3d] bg-[#12131e] p-4 shadow-xl z-50 text-sm">
-              <div className="flex items-center justify-between border-b border-[#222534] pb-2 mb-3">
-                <span className="font-semibold text-white">Wonder Notifications</span>
-                <span className="text-[11px] text-amber-400 font-medium">CodersHigh</span>
+            <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-[#222230] bg-[#101015] p-3.5 shadow-2xl z-50 text-xs">
+              <div className="flex items-center justify-between border-b border-[#1b1b26] pb-2 mb-2">
+                <span className="font-semibold text-white">Notifications</span>
+                <span className="text-[10px] text-amber-400">Citradhara</span>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 rounded-lg p-2 hover:bg-[#191b28] transition">
-                  <span className="h-2 w-2 mt-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <div>
-                    <p className="text-xs text-zinc-200 font-medium">
-                      Welcome to Citradhara — A Stream of Wonders!
-                    </p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Stream your coding videos using free Google Drive storage.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg p-2 hover:bg-[#191b28] transition">
-                  <span className="h-2 w-2 mt-1.5 rounded-full bg-indigo-400 shrink-0" />
-                  <div>
-                    <p className="text-xs text-zinc-200 font-medium">
-                      New Masterclass Added
-                    </p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Check out Next.js & AI Web Applications.
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <div className="rounded-lg p-2 hover:bg-[#151520] transition">
+                  <p className="text-zinc-200 font-medium">Welcome to Citradhara</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">A stream of wonders across cinema, music, code, and science.</p>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* User Profile / Google Auth */}
+        {/* Profile / Sign In */}
         {user ? (
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center rounded-full ring-2 ring-amber-500/40 hover:ring-amber-400 transition"
+              className="flex items-center rounded-full ring-1 ring-zinc-700 hover:ring-amber-400 transition"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
                 alt={user.displayName || "User"}
-                className="h-8 w-8 rounded-full object-cover"
+                className="h-7 w-7 rounded-full object-cover"
               />
             </button>
 
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-[#282b3d] bg-[#12131e] p-2 shadow-2xl z-50">
-                <div className="flex items-center gap-3 border-b border-[#222534] p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={user.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                    alt={user.displayName || "User"}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                  <div className="overflow-hidden">
-                    <p className="truncate text-sm font-semibold text-white">
-                      {user.displayName || "CodersHigh Member"}
-                    </p>
-                    <p className="truncate text-xs text-zinc-400">
-                      {user.email || "member@codershigh.dev"}
-                    </p>
-                  </div>
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-[#222230] bg-[#101015] p-2 shadow-2xl z-50">
+                <div className="border-b border-[#1c1c28] p-2.5">
+                  <p className="truncate text-xs font-semibold text-white">
+                    {user.displayName || "Community Member"}
+                  </p>
+                  <p className="truncate text-[11px] text-zinc-400">
+                    {user.email || "member@codershigh.dev"}
+                  </p>
                 </div>
 
-                <div className="py-2 space-y-1">
+                <div className="py-1.5 space-y-0.5 text-xs">
                   <Link
                     href={`/channel/${user.uid}`}
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-[#1a1c29] hover:text-white"
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-zinc-300 hover:bg-[#171722] hover:text-white"
                   >
-                    <User className="h-4 w-4 text-amber-400" />
-                    <span>Your Wonder Channel</span>
+                    <User className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>Your Channel</span>
                   </Link>
                   <Link
                     href="/history"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-[#1a1c29] hover:text-white"
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-zinc-300 hover:bg-[#171722] hover:text-white"
                   >
-                    <History className="h-4 w-4 text-indigo-400" />
-                    <span>Watch History</span>
+                    <History className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>History</span>
                   </Link>
                   <Link
                     href="/liked"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-[#1a1c29] hover:text-white"
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-zinc-300 hover:bg-[#171722] hover:text-white"
                   >
-                    <ThumbsUp className="h-4 w-4 text-rose-400" />
+                    <ThumbsUp className="h-3.5 w-3.5 text-zinc-400" />
                     <span>Liked Streams</span>
                   </Link>
                 </div>
 
-                <div className="border-t border-[#222534] pt-2">
+                <div className="border-t border-[#1c1c28] pt-1 mt-1">
                   <button
                     onClick={() => {
                       signOut();
                       setShowUserMenu(false);
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-3.5 w-3.5" />
                     <span>Sign Out</span>
                   </button>
                 </div>
@@ -263,9 +206,9 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
         ) : (
           <button
             onClick={() => signInWithGoogle()}
-            className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-amber-300 hover:bg-amber-500/20 active:scale-95 transition"
+            className="flex items-center gap-2 rounded-full border border-zinc-700 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/10 hover:text-white active:scale-95 transition"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

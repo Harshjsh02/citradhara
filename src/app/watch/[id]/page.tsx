@@ -220,10 +220,10 @@ export default function WatchPage() {
 
                 <button
                   onClick={handleSubscribe}
-                  className={`ml-3 rounded-full px-5 py-2 text-xs font-bold transition-all ${
+                  className={`ml-3 rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
                     isSubscribed
-                      ? "bg-[#1f2233] text-zinc-300 hover:bg-[#2b2e45] hover:text-white"
-                      : "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-md shadow-rose-500/20 hover:opacity-95 active:scale-95"
+                      ? "bg-[#1c1c26] text-zinc-300 hover:bg-[#252533] hover:text-white"
+                      : "bg-white text-black hover:bg-zinc-200 shadow-sm"
                   }`}
                 >
                   {isSubscribed ? "Subscribed" : "Subscribe"}
@@ -233,39 +233,39 @@ export default function WatchPage() {
               {/* Action Buttons (Like, Dislike, Share) */}
               <div className="flex items-center gap-2">
                 {/* Like / Dislike Pill */}
-                <div className="flex items-center rounded-full bg-[#161824] border border-[#26293a] overflow-hidden">
+                <div className="flex items-center rounded-full bg-[#121218] border border-[#1e1e28] overflow-hidden">
                   <button
                     onClick={handleLike}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition ${
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium transition ${
                       isLiked
                         ? "text-amber-400 bg-amber-500/10"
-                        : "text-zinc-300 hover:bg-[#222538] hover:text-white"
+                        : "text-zinc-300 hover:bg-[#1a1a24] hover:text-white"
                     }`}
                   >
-                    <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-amber-400" : ""}`} />
+                    <ThumbsUp className={`h-3.5 w-3.5 ${isLiked ? "fill-amber-400" : ""}`} />
                     <span>{likesCount > 0 ? formatViewCount(likesCount) : "Like"}</span>
                   </button>
 
-                  <div className="h-4 w-[1px] bg-[#2a2d40]" />
+                  <div className="h-3.5 w-[1px] bg-[#22222e]" />
 
                   <button
                     onClick={handleDislike}
-                    className={`px-3 py-2 text-xs transition ${
+                    className={`px-2.5 py-1.5 text-xs transition ${
                       isDisliked
                         ? "text-rose-400 bg-rose-500/10"
-                        : "text-zinc-300 hover:bg-[#222538] hover:text-white"
+                        : "text-zinc-300 hover:bg-[#1a1a24] hover:text-white"
                     }`}
                   >
-                    <ThumbsDown className={`h-4 w-4 ${isDisliked ? "fill-rose-400" : ""}`} />
+                    <ThumbsDown className={`h-3.5 w-3.5 ${isDisliked ? "fill-rose-400" : ""}`} />
                   </button>
                 </div>
 
                 {/* Share Button */}
                 <button
                   onClick={() => setIsShareOpen(true)}
-                  className="flex items-center gap-2 rounded-full bg-[#161824] border border-[#26293a] px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-[#222538] hover:text-white transition"
+                  className="flex items-center gap-1.5 rounded-full bg-[#121218] border border-[#1e1e28] px-3.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-[#1a1a24] hover:text-white transition"
                 >
-                  <Share2 className="h-4 w-4" />
+                  <Share2 className="h-3.5 w-3.5" />
                   <span>Share</span>
                 </button>
 
@@ -274,21 +274,21 @@ export default function WatchPage() {
                   href={video.driveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#161824] border border-[#26293a] px-4 py-2 text-xs font-semibold text-amber-300 hover:bg-[#222538] hover:text-amber-200 transition"
+                  className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#121218] border border-[#1e1e28] px-3.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-[#1a1a24] hover:text-white transition"
                 >
-                  <HardDrive className="h-3.5 w-3.5" />
+                  <HardDrive className="h-3.5 w-3.5 text-amber-400" />
                   <span>Drive</span>
                 </a>
               </div>
             </div>
 
             {/* Expandable Description Box */}
-            <div className="rounded-2xl border border-[#212433] bg-[#12131d] p-4 text-xs">
-              <div className="flex flex-wrap items-center gap-3 font-semibold text-zinc-200 mb-2">
+            <div className="rounded-2xl border border-[#1c1c26] bg-[#0f0f14] p-3.5 text-xs">
+              <div className="flex flex-wrap items-center gap-2.5 font-medium text-zinc-300 mb-2">
                 <span>{video.views.toLocaleString()} views</span>
                 <span>•</span>
                 <span>{relativeTime}</span>
-                <span className="rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-amber-400 font-mono">
+                <span className="rounded-md bg-[#1a1a24] border border-[#252534] px-2 py-0.5 text-zinc-300 text-[11px]">
                   {video.category}
                 </span>
               </div>
