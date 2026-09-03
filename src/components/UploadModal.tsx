@@ -40,6 +40,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const router = useRouter();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
 
   // Upload Method Tab: 'file' | 'link'
   const [uploadMethod, setUploadMethod] = useState<"file" | "link">("file");
@@ -73,13 +74,17 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
       try {
         const url = URL.createObjectURL(file);
         const video = document.createElement("video");
-        video.preload = "metadata";
+        video.preload = "auto";
         video.muted = true;
         video.playsInline = true;
         video.src = url;
 
-        video.onloadeddata = () => {
-          video.currentTime = Math.min(1.0, (video.duration || 2) / 2);
+        video.onloadedmetadata = () => {
+          // Seek past initial black fade (usually 3 to 5 seconds into the video)
+          const target = video.duration && video.duration > 10
+            ? Math.min(4.0, video.duration * 0.15)
+            : Math.min(2.0, (video.duration || 4) / 2);
+          video.currentTime = target;
         };
 
         video.onseeked = () => {
@@ -106,6 +111,18 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         resolve("");
       }
     });
+  };
+
+  const handleThumbnailFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCustomThumbnail(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -469,34 +486,87 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             />
           </div>
 
-          {/* Custom Thumbnail URL & Tags */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1">
-                <ImageIcon className="h-3.5 w-3.5 text-indigo-400" />
-                Custom Thumbnail Image (Optional)
-              </label>
-              <input
-                type="url"
-                value={customThumbnail}
-                onChange={(e) => setCustomThumbnail(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
-              />
-            </div>
+          {/* Thumbnail Section with Live 16:9 Preview & Image File Upload */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5 text-amber-400" />
+                Thumbnail Image
+              </span>
+              <span className="text-[10px] text-zinc-500 font-normal normal-case">
+                Auto-extracted or upload your custom thumbnail
+              </span>
+            </label>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                Tags (Comma separated)
-              </label>
-              <input
-                type="text"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="nextjs, python, fullstack"
-                className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
-              />
+            <div className="flex flex-col sm:flex-row items-start gap-4 p-3 rounded-2xl border border-[#272b3c] bg-[#161826]">
+              {/* Live 16:9 Thumbnail Preview */}
+              <div className="relative aspect-video w-full sm:w-48 rounded-xl overflow-hidden bg-black border border-white/10 shrink-0">
+                {customThumbnail ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={customThumbnail}
+                    alt="Thumbnail Preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500 text-[11px] p-2 text-center">
+                    <ImageIcon className="h-5 w-5 mb-1 opacity-50" />
+                    <span>No thumbnail selected</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Thumbnail Button & URL Input */}
+              <div className="flex-1 w-full space-y-2">
+                <input
+                  type="file"
+                  ref={thumbInputRef}
+                  onChange={handleThumbnailFileSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => thumbInputRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 px-3 py-1.5 text-xs font-semibold transition shadow-sm"
+                  >
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    <span>Upload Thumbnail Image</span>
+                  </button>
+                  {customThumbnail && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomThumbnail("")}
+                      className="text-xs text-zinc-400 hover:text-rose-400 transition px-2 py-1"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={customThumbnail.startsWith("data:image/") ? "" : customThumbnail}
+                  onChange={(e) => setCustomThumbnail(e.target.value)}
+                  placeholder="Or paste image URL (Google Drive, Unsplash...)"
+                  className="w-full rounded-xl border border-[#272b3c] bg-[#11131c] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              Tags (Comma separated)
+            </label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="nextjs, python, fullstack"
+              className="w-full rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+            />
           </div>
 
           {/* Error message */}
