@@ -64,7 +64,10 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
         <div className="space-y-0.5">
           <Link
             href="/"
-            onClick={() => onSelectCategory && onSelectCategory("All")}
+            onClick={() => {
+              if (onSelectCategory) onSelectCategory("All");
+              if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+            }}
             className={`flex items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
               pathname === "/" && selectedCategory === "All"
                 ? "bg-[#14141c] text-white font-semibold"
@@ -77,6 +80,9 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
 
           <Link
             href="/history"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+            }}
             className={`flex items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
               pathname === "/history"
                 ? "bg-[#14141c] text-white font-semibold"
@@ -89,6 +95,9 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
 
           <Link
             href="/liked"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+            }}
             className={`flex items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
               pathname === "/liked"
                 ? "bg-[#14141c] text-white font-semibold"
@@ -114,7 +123,10 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
               return (
                 <button
                   key={cat}
-                  onClick={() => onSelectCategory && onSelectCategory(cat)}
+                  onClick={() => {
+                    if (onSelectCategory) onSelectCategory(cat);
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+                  }}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
                     isSelected
                       ? "bg-[#171722] text-amber-400 font-semibold"
