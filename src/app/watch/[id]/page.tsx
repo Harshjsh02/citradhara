@@ -14,7 +14,8 @@ import {
   ChevronDown, 
   ChevronUp, 
   Sparkles,
-  HardDrive
+  HardDrive,
+  Trash2
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import VideoPlayer from "@/components/VideoPlayer";
@@ -32,7 +33,8 @@ import {
   toggleSaveLiked,
   isVideoLikedLocally,
   toggleSubscription,
-  isChannelSubscribed
+  isChannelSubscribed,
+  deleteVideo
 } from "@/lib/db";
 import { useAuth } from "@/context/AuthContext";
 
@@ -126,6 +128,16 @@ export default function WatchPage() {
         origin: { y: 0.7 },
         colors: ["#f59e0b", "#e11d48", "#6366f1"],
       });
+    }
+  };
+
+  const isOwner = Boolean(user && (user.uid === video?.uploaderUid || user.email));
+
+  const handleDeleteVideo = async () => {
+    if (!video) return;
+    if (window.confirm(`Are you sure you want to delete "${video.title}"? This cannot be undone.`)) {
+      await deleteVideo(video.id);
+      router.push("/");
     }
   };
 
@@ -279,6 +291,18 @@ export default function WatchPage() {
                   <HardDrive className="h-3.5 w-3.5 text-amber-400" />
                   <span>Drive</span>
                 </a>
+
+                {/* Delete Stream Button (Owner) */}
+                {isOwner && (
+                  <button
+                    onClick={handleDeleteVideo}
+                    title="Delete this stream"
+                    className="flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 px-3.5 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
               </div>
             </div>
 

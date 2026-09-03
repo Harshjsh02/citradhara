@@ -1,4 +1,4 @@
-import { Video, Comment } from "@/types";
+import { Video, Comment, UserProfile } from "@/types";
 import { INITIAL_VIDEOS, INITIAL_COMMENTS } from "./seedData";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -12,7 +12,8 @@ import {
   query, 
   where, 
   orderBy,
-  addDoc
+  addDoc,
+  deleteDoc
 } from "firebase/firestore";
 
 const STORAGE_KEYS = {
@@ -343,5 +344,98 @@ export function isChannelSubscribed(channelHandle: string): boolean {
     return subs.includes(channelHandle);
   } catch {
     return false;
+  }
+}
+
+export async function deleteVideo(videoId: string): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, "videos", videoId);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn("Firestore deleteVideo error:", err);
+    }
+  }
+
+  // Remove from local storage
+  const local = getLocalVideos();
+  const filtered = local.filter((v) => v.id !== videoId);
+  saveLocalVideos(filtered);
+
+  // Clean from history and liked if present
+  if (typeof window !== "undefined") {
+    try {
+      const likedRaw = localStorage.getItem(STORAGE_KEYS.LIKED);
+      if (likedRaw) {
+        const liked: string[] = JSON.parse(likedRaw);
+        localStorage.setItem(STORAGE_KEYS.LIKED, JSON.stringify(liked.filter(id => id !== videoId)));
+      }
+      const histRaw = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      if (histRaw) {
+        const hist: string[] = JSON.parse(histRaw);
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(hist.filter(id => id !== videoId)));
+      }
+    } catch {}
+  }
+
+  return true;
+}
+
+export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        return snap.data() as UserProfile;
+      }
+    } catch (err) {
+      console.warn("Fetch profile error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(`citra_profile_${uid}`);
+      if (saved) {
+        return JSON.parse(saved) as UserProfile;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const userRef = doc(db, "users", profile.uid);
+      await setDoc(userRef, profile, { merge: true });
+    } catch (err) {
+      console.warn("Save profile error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(`citra_profile_${profile.uid}`, JSON.stringify(profile));
+
+      // Update local videos by this creator so their channel name, avatar, and handle update across the app
+      const local = getLocalVideos();
+      const updated = local.map((v) => {
+        if (v.uploaderUid === profile.uid) {
+          return {
+            ...v,
+            uploaderName: profile.displayName,
+            uploaderAvatar: profile.photoURL,
+            uploaderHandle: profile.handle,
+          };
+        }
+        return v;
+      });
+      saveLocalVideos(updated);
+    } catch (e) {
+      console.error("Failed saving profile to storage:", e);
+    }
   }
 }
