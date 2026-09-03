@@ -43,6 +43,8 @@ export default function VideoPlayer({
             title={title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
             onError={() => setHasError(true)}
             className="absolute inset-0 h-full w-full border-0"
           />

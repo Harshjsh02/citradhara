@@ -24,6 +24,21 @@ const STORAGE_KEYS = {
   SUBSCRIPTIONS: "citradhara_subscriptions",
 };
 
+const DUMMY_SEED_IDS = new Set([
+  "citra-1",
+  "citra-2",
+  "citra-3",
+  "citra-4",
+  "citra-5",
+  "citra-6",
+  "citra-7",
+  "citra-8",
+]);
+
+function isDummySeed(id: string): boolean {
+  return DUMMY_SEED_IDS.has(id);
+}
+
 // Local storage helpers
 function getLocalVideos(): Video[] {
   if (typeof window === "undefined") return [];
@@ -33,7 +48,7 @@ function getLocalVideos(): Video[] {
       return [];
     }
     const parsed = JSON.parse(raw) as Video[];
-    const clean = parsed.filter((v) => !v.id.startsWith("citra-"));
+    const clean = parsed.filter((v) => !isDummySeed(v.id));
     if (clean.length !== parsed.length) {
       localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(clean));
     }
@@ -46,7 +61,7 @@ function getLocalVideos(): Video[] {
 function saveLocalVideos(videos: Video[]): void {
   if (typeof window === "undefined") return;
   try {
-    const clean = videos.filter((v) => !v.id.startsWith("citra-"));
+    const clean = videos.filter((v) => !isDummySeed(v.id));
     localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(clean));
   } catch (e) {
     console.error("Failed saving videos:", e);
@@ -103,11 +118,11 @@ export async function fetchVideos(category?: string, searchQuery?: string): Prom
       if (!snapshot.empty) {
         videos = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() } as Video))
-          .filter((v) => !v.id.startsWith("citra-"));
+          .filter((v) => !isDummySeed(v.id));
 
-        // Asynchronously delete any leftover dummy seed documents from Firestore
+        // Asynchronously delete only dummy seed documents from Firestore
         snapshot.docs.forEach((docSnap) => {
-          if (docSnap.id.startsWith("citra-")) {
+          if (isDummySeed(docSnap.id)) {
             deleteDoc(docSnap.ref).catch(() => {});
           }
         });
@@ -177,7 +192,7 @@ export async function incrementVideoViews(id: string): Promise<void> {
 export async function addVideo(videoData: Omit<Video, "id" | "views" | "likesCount" | "dislikesCount" | "commentsCount" | "createdAt">): Promise<Video> {
   const newVideo: Video = {
     ...videoData,
-    id: `citra-${Date.now()}`,
+    id: `stream_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     views: 1,
     likesCount: 0,
     dislikesCount: 0,
@@ -187,7 +202,10 @@ export async function addVideo(videoData: Omit<Video, "id" | "views" | "likesCou
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "videos", newVideo.id), newVideo);
+      await withTimeout(setDoc(doc(db, "videos", newVideo.id), newVideo), 3000);
+      // Also cache in local storage
+      const local = getLocalVideos();
+      saveLocalVideos([newVideo, ...local.filter((v) => v.id !== newVideo.id)]);
       return newVideo;
     } catch (err) {
       console.warn("Firestore addVideo error:", err);
@@ -195,7 +213,7 @@ export async function addVideo(videoData: Omit<Video, "id" | "views" | "likesCou
   }
 
   const local = getLocalVideos();
-  saveLocalVideos([newVideo, ...local]);
+  saveLocalVideos([newVideo, ...local.filter((v) => v.id !== newVideo.id)]);
   return newVideo;
 }
 

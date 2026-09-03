@@ -216,21 +216,58 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             )}
           </div>
 
-          {/* Video Preview if file ID parsed */}
+          {/* Stream Preview if link parsed */}
           {fileId && (
-            <div className="rounded-2xl border border-[#262a3c] bg-black p-3 space-y-2">
-              <p className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                <Film className="h-3.5 w-3.5 text-amber-400" />
-                Stream Preview:
-              </p>
-              <div className="aspect-video w-full rounded-xl overflow-hidden bg-zinc-950">
-                <iframe
-                  src={parseVideoUrl(videoInput)?.embedUrl || getDriveEmbedUrl(fileId)}
-                  title="Preview"
-                  className="h-full w-full border-0"
-                  allow="autoplay; fullscreen"
-                />
+            <div className="rounded-2xl border border-[#262a3c] bg-black p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <Film className="h-3.5 w-3.5 text-amber-400" />
+                  Stream Connected:
+                </p>
+                <span className="text-[11px] font-mono text-zinc-400 bg-[#161824] px-2.5 py-0.5 rounded-full border border-zinc-700/50 truncate max-w-[220px]">
+                  ID: {fileId}
+                </span>
               </div>
+
+              {parseVideoUrl(videoInput)?.source === "youtube" ? (
+                <div className="aspect-video w-full rounded-xl overflow-hidden bg-zinc-950">
+                  <iframe
+                    src={parseVideoUrl(videoInput)?.embedUrl}
+                    title="YouTube Preview"
+                    className="h-full w-full border-0"
+                    allow="autoplay; fullscreen"
+                  />
+                </div>
+              ) : (
+                <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-[#141622] border border-[#242738] flex flex-col items-center justify-center p-4 text-center">
+                  {customThumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={customThumbnail}
+                      alt="Thumbnail Preview"
+                      className="absolute inset-0 h-full w-full object-cover opacity-50"
+                    />
+                  ) : null}
+                  <div className="relative z-10 space-y-2 bg-black/80 backdrop-blur-md p-4 rounded-xl max-w-sm border border-white/10">
+                    <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Google Drive Stream Ready</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300">
+                      Link parsed successfully. Your stream will be playable directly on Citradhara.
+                    </p>
+                    <a
+                      href={`https://drive.google.com/file/d/${fileId}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-semibold underline"
+                    >
+                      <span>Verify file in Google Drive</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
