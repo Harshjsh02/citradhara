@@ -164,9 +164,15 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         setFileId(result.fileId);
         setDriveInput(result.url || `https://drive.google.com/file/d/${result.fileId}/view`);
       } else {
+        setUploadProgress(null);
+        setSelectedFile(null);
+        setFileId(null);
         setErrorMessage(result.error || "Failed to upload file.");
       }
     } catch (err: any) {
+      setUploadProgress(null);
+      setSelectedFile(null);
+      setFileId(null);
       setErrorMessage(err.message || "File upload failed.");
     } finally {
       setIsUploadingToDrive(false);
@@ -361,7 +367,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[11px] text-zinc-400">
                         <span>
-                          {isUploadingToDrive ? "Uploading video file..." : "Uploaded successfully!"}
+                          {isUploadingToDrive
+                            ? "Uploading video file..."
+                            : errorMessage
+                            ? "Upload failed"
+                            : "Uploaded successfully!"}
                         </span>
                         <span className="font-mono text-amber-400 font-bold">{uploadProgress.percentage}%</span>
                       </div>
