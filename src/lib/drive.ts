@@ -3,6 +3,9 @@
  * Converts any Google Drive share link into an embedded preview player URL & high-res thumbnail URL.
  */
 
+export const DEFAULT_COMMUNITY_FOLDER_ID = process.env.NEXT_PUBLIC_DRIVE_FOLDER_ID || "1-zNgIZjpaLi49KnegN-cdFH6y2QmJ0ec";
+export const DEFAULT_COMMUNITY_FOLDER_URL = process.env.NEXT_PUBLIC_DRIVE_FOLDER_URL || "https://drive.google.com/drive/folders/1-zNgIZjpaLi49KnegN-cdFH6y2QmJ0ec?usp=sharing";
+
 export function extractDriveFileId(input: string): string | null {
   if (!input) return null;
   const trimmed = input.trim();

@@ -101,8 +101,8 @@ To allow community members to upload video files directly from the web browser i
    function doPost(e) {
      try {
        var data = JSON.parse(e.postData.contents);
-       // Replace with your Google Drive Folder ID:
-       var folderId = "PASTE_YOUR_DRIVE_FOLDER_ID_HERE";
+       // Pre-configured with CodersHigh Google Drive Folder:
+       var folderId = "1-zNgIZjpaLi49KnegN-cdFH6y2QmJ0ec";
        var folder = DriveApp.getFolderById(folderId);
        
        var contentType = data.mimeType || "video/mp4";

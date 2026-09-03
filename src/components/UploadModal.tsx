@@ -15,10 +15,17 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Check,
-  Code
+  Code,
+  ExternalLink
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
-import { extractDriveFileId, getDriveEmbedUrl, getDriveThumbnailUrl } from "@/lib/drive";
+import { 
+  extractDriveFileId, 
+  getDriveEmbedUrl, 
+  getDriveThumbnailUrl,
+  DEFAULT_COMMUNITY_FOLDER_URL,
+  DEFAULT_COMMUNITY_FOLDER_ID
+} from "@/lib/drive";
 import { uploadVideoFileToDrive, DriveUploadProgress } from "@/lib/driveUpload";
 import { addVideo } from "@/lib/db";
 import { useAuth } from "@/context/AuthContext";
@@ -204,6 +211,30 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
         {/* Modal Form */}
         <form onSubmit={handlePublish} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Community Google Drive Storage Banner */}
+          <div className="flex items-center justify-between rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 p-3.5 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                <HardDrive className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Official CodersHigh Drive Storage</p>
+                <p className="text-[11px] text-zinc-400">
+                  Folder ID: <span className="text-amber-400 font-mono">{DEFAULT_COMMUNITY_FOLDER_ID.slice(0, 12)}...</span>
+                </p>
+              </div>
+            </div>
+            <a
+              href={DEFAULT_COMMUNITY_FOLDER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full bg-[#1b1d2a] hover:bg-[#252839] border border-amber-500/30 px-3.5 py-1.5 text-xs font-semibold text-amber-300 hover:text-white transition shadow-sm"
+            >
+              <span>Open Folder</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+
           {/* Method 1: File Dropzone */}
           {uploadMethod === "file" && (
             <div className="space-y-3">
@@ -333,9 +364,9 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                   You can accept video uploads straight into your Google Drive folder for <strong>100% free</strong> without any server bills:
                 </p>
                 <div className="rounded-xl bg-black/60 p-3 font-mono text-[11px] text-zinc-300 space-y-1">
-                  <p className="text-amber-400">// 1. Create a Google Drive folder &quot;CodersHigh Videos&quot;</p>
-                  <p className="text-zinc-400">// 2. Community members upload directly from the web interface</p>
-                  <p className="text-emerald-400">// 3. Videos stream with adaptive speed and 0 bandwidth cost!</p>
+                  <p className="text-amber-400">// Target Folder: {DEFAULT_COMMUNITY_FOLDER_ID}</p>
+                  <p className="text-zinc-400">// 1. Drop video in the CodersHigh folder or browse file above</p>
+                  <p className="text-emerald-400">// 2. Videos stream with adaptive speed and 0 bandwidth cost!</p>
                 </div>
               </div>
             )}

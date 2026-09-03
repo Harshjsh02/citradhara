@@ -19,9 +19,11 @@ import {
   GitBranch, 
   HelpCircle,
   HardDrive,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from "lucide-react";
 import { CATEGORIES, Category } from "@/types";
+import { DEFAULT_COMMUNITY_FOLDER_URL } from "@/lib/drive";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -125,16 +127,27 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
         {/* Free Stack Info Card */}
         <div className={`border-t border-[#1f2230] pt-4 ${!isOpen ? "lg:hidden" : ""}`}>
           <div className="rounded-2xl border border-[#272a3b] bg-gradient-to-b from-[#131520] to-[#0c0d14] p-3 text-xs">
-            <div className="flex items-center gap-2 text-amber-400 font-semibold mb-1">
-              <HardDrive className="h-4 w-4" />
-              <span>Free Community Tech</span>
+            <div className="flex items-center justify-between text-amber-400 font-semibold mb-1">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4" />
+                <span>Free Community Tech</span>
+              </div>
             </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">
+            <p className="text-[11px] text-zinc-400 leading-relaxed mb-2.5">
               Hosted on Vercel, streaming zero-cost from Google Drive with Firebase Auth.
             </p>
+            <a
+              href={DEFAULT_COMMUNITY_FOLDER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between rounded-lg bg-[#1a1c28] hover:bg-[#242738] border border-amber-500/20 px-2.5 py-1.5 text-[11px] font-medium text-amber-300 transition mb-2"
+            >
+              <span>Drive Storage Folder</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
             <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-[#1f2230]">
-              <span>CodersHigh Community</span>
-              <span className="text-emerald-400">100% Free Tier</span>
+              <span>CodersHigh Storage</span>
+              <span className="text-emerald-400 font-medium">100% Free</span>
             </div>
           </div>
         </div>
