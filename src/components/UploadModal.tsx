@@ -9,15 +9,17 @@ import {
   AlertCircle, 
   Film, 
   Link as LinkIcon, 
+  ImageIcon,
   ExternalLink, 
   HelpCircle, 
   ChevronDown 
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
 import { 
-  parseVideoUrl,
+  parseVideoUrl, 
   getDriveEmbedUrl, 
-  getDriveThumbnailUrl
+  getDriveThumbnailUrl,
+  normalizeThumbnailUrl
 } from "@/lib/drive";
 import { addVideo } from "@/lib/db";
 import { useAuth } from "@/context/AuthContext";
@@ -40,6 +42,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("Web Development");
   const [tagsInput, setTagsInput] = useState("codershigh, tech");
+  const [customThumbnailUrl, setCustomThumbnailUrl] = useState("");
   const [duration, setDuration] = useState("15:00");
 
   // UI state
@@ -88,7 +91,9 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
       const details = parseVideoUrl(videoInput);
       const embedUrl = details?.embedUrl || getDriveEmbedUrl(fileId);
       const driveUrl = details?.viewUrl || `https://drive.google.com/file/d/${fileId}/view`;
-      const thumbnail = details?.thumbnailUrl || getDriveThumbnailUrl(fileId);
+      const thumbnail = customThumbnailUrl.trim()
+        ? normalizeThumbnailUrl(customThumbnailUrl.trim())
+        : (details?.thumbnailUrl || getDriveThumbnailUrl(fileId));
 
       const newVideo = await addVideo({
         title: title.trim(),
@@ -220,7 +225,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-[#141622] border border-[#242738] flex flex-col items-center justify-center p-4 text-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`https://drive.google.com/thumbnail?id=${fileId}&sz=w1280`}
+                    src={customThumbnailUrl.trim() ? normalizeThumbnailUrl(customThumbnailUrl.trim()) : `https://drive.google.com/thumbnail?id=${fileId}&sz=w1280`}
                     alt="Thumbnail Preview"
                     className="absolute inset-0 h-full w-full object-cover opacity-50"
                   />
@@ -309,6 +314,54 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
             />
           </div>
 
+          {/* Custom Thumbnail Image Link (Link only) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5 text-amber-400" />
+                Thumbnail Image Link
+              </span>
+              <span className="text-[10px] text-zinc-500 font-normal normal-case">
+                Optional link (Drive image, Unsplash, or web URL)
+              </span>
+            </label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={customThumbnailUrl}
+                onChange={(e) => setCustomThumbnailUrl(e.target.value)}
+                placeholder="Paste thumbnail image URL (or leave blank to auto-generate from video)"
+                className="flex-1 rounded-xl border border-[#272b3c] bg-[#171926] px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none transition"
+              />
+              {customThumbnailUrl && (
+                <button
+                  type="button"
+                  onClick={() => setCustomThumbnailUrl("")}
+                  className="rounded-xl border border-zinc-700/50 bg-[#161824] px-3 py-2 text-xs text-zinc-400 hover:text-rose-400 transition"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {customThumbnailUrl.trim() && (
+              <div className="flex items-center gap-3 pt-1">
+                <div className="relative aspect-video w-32 rounded-lg overflow-hidden bg-black border border-zinc-700/50 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={normalizeThumbnailUrl(customThumbnailUrl)}
+                    alt="Thumbnail Preview"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1280&q=80";
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-emerald-400">
+                  ✓ Custom thumbnail link recognized
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Tags */}
           <div className="space-y-1.5">
