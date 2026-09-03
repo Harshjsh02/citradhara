@@ -16,12 +16,9 @@ import {
   Tv, 
   Video,
   History, 
-  ThumbsUp, 
-  HardDrive,
-  ExternalLink
+  ThumbsUp
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
-import { DEFAULT_COMMUNITY_FOLDER_URL } from "@/lib/drive";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -122,24 +119,8 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
           </div>
         </div>
 
-        {/* Minimal Drive Storage link */}
-        <div className={`border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
-          <a
-            href={DEFAULT_COMMUNITY_FOLDER_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between rounded-xl bg-[#101016] hover:bg-[#171722] border border-[#1d1d28] p-2.5 text-xs text-zinc-300 transition group"
-          >
-            <div className="flex items-center gap-2">
-              <HardDrive className="h-3.5 w-3.5 text-amber-400" />
-              <span className="text-[11px] font-medium">Community Drive</span>
-            </div>
-            <ExternalLink className="h-3 w-3 text-zinc-500 group-hover:text-zinc-300" />
-          </a>
-        </div>
-
         {/* Minimal Footer */}
-        <div className={`px-3 pt-2 text-[10px] text-zinc-600 space-y-0.5 ${!isOpen ? "lg:hidden" : ""}`}>
+        <div className={`border-t border-[#161620] pt-3 px-3 text-[10px] text-zinc-600 space-y-0.5 ${!isOpen ? "lg:hidden" : ""}`}>
           <p className="text-zinc-500 font-medium">Citradhara • चित्रधारा</p>
           <p>A Stream of Wonders</p>
         </div>
