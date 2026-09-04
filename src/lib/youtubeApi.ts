@@ -146,12 +146,13 @@ export async function fetchUserSubscriptions(accessToken: string): Promise<YouTu
  */
 export async function fetchSubscribedLongFormVideos(
   accessToken: string,
-  subscriptions: YouTubeSubscription[]
+  subscriptions: YouTubeSubscription[],
+  force = false
 ): Promise<Video[]> {
   if (!accessToken || subscriptions.length === 0) return [];
 
   const cacheKey = `${FEED_CACHE_PREFIX}${accessToken.slice(-8)}`;
-  if (typeof window !== "undefined") {
+  if (!force && typeof window !== "undefined") {
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {

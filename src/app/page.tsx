@@ -125,21 +125,47 @@ function HomeFeed() {
     };
   }, [googleAccessToken, selectedCategory, urlQuery]);
 
-  const handleRefreshFeed = async () => {
+  const handleRefreshFeed = async (isManual = false) => {
     if (!googleAccessToken || subscriptions.length === 0) return;
-    setIsRefreshing(true);
+    if (isManual) setIsRefreshing(true);
     try {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`citra_yt_feed_${googleAccessToken.slice(-8)}`);
       }
-      const freshVideos = await fetchSubscribedLongFormVideos(googleAccessToken, subscriptions);
+      const freshVideos = await fetchSubscribedLongFormVideos(googleAccessToken, subscriptions, true);
       if (freshVideos.length > 0) {
         setVideos(freshVideos);
       }
     } finally {
-      setIsRefreshing(false);
+      if (isManual) setIsRefreshing(false);
     }
   };
+
+  // Auto-refresh in background every 60s and on tab focus / visibility
+  useEffect(() => {
+    if (!googleAccessToken || subscriptions.length === 0) return;
+
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        handleRefreshFeed(false);
+      }
+    }, 60000);
+
+    const handleFocusSync = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        handleRefreshFeed(false);
+      }
+    };
+
+    window.addEventListener("focus", handleFocusSync);
+    document.addEventListener("visibilitychange", handleFocusSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocusSync);
+      document.removeEventListener("visibilitychange", handleFocusSync);
+    };
+  }, [googleAccessToken, subscriptions]);
 
   // 1. Filter base list by channel / playlist / watch-later view
   let processedVideos = [...videos];
@@ -370,16 +396,20 @@ function HomeFeed() {
               </button>
             </div>
 
-            {/* Refresh Feed Action */}
+            {/* Live Auto-Refresh Status & Quick Trigger */}
             {user && subscriptions.length > 0 && (
               <button
-                onClick={handleRefreshFeed}
+                onClick={() => handleRefreshFeed(true)}
                 disabled={isRefreshing}
-                className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-[#121218] px-3 py-1 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition"
-                title="Refresh latest uploads"
+                className="flex items-center gap-2 rounded-full border border-zinc-800/80 bg-[#121218] px-3 py-1.5 text-xs text-zinc-300 hover:text-white hover:border-zinc-700 active:scale-95 transition"
+                title="Feed auto-refreshes every minute. Click to refresh immediately."
               >
-                <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
-                <span>Refresh Feed</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="font-semibold text-[11px] text-zinc-300">Auto-Syncing</span>
+                <RefreshCw className={`h-3 w-3 ml-0.5 text-zinc-400 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
               </button>
             )}
           </div>
