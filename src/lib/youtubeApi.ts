@@ -4,7 +4,7 @@
  * Strictly filters out Shorts (duration <= 60s and #shorts tags).
  */
 
-import { Video } from "@/types";
+import { Video, Category } from "@/types";
 
 export interface YouTubeSubscription {
   channelId: string;
@@ -70,9 +70,110 @@ export function isShortsVideo(title: string, description: string, durationSecond
   return false;
 }
 
-const SUBS_CACHE_PREFIX = "citra_yt_subs_";
-const FEED_CACHE_PREFIX = "citra_yt_feed_";
+const SUBS_CACHE_PREFIX = "citra_yt_subs_v5_";
+const FEED_CACHE_PREFIX = "citra_yt_feed_v5_";
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache to preserve quota
+
+/**
+ * Maps a YouTube video to Citradhara's curated categories.
+ * Prevents entertainment, vlogs, and comedy from erroneously falling into "Gaming" or "Coding & Tech".
+ */
+export function determineVideoCategory(
+  categoryId?: string,
+  title: string = "",
+  description: string = "",
+  tags: string[] = [],
+  channelTitle: string = ""
+): Category {
+  const text = `${title} ${description} ${tags.join(" ")} ${channelTitle}`.toLowerCase();
+
+  // 1. Gaming - Only true gaming content
+  if (
+    categoryId === "20" ||
+    /\b(gaming|gameplay|game|gamer|gamers|minecraft|gta|gta 5|gta v|bgmi|pubg|roblox|fortnite|valorant|esports|walkthrough|playthrough|streamer|speedrun|nintendo|playstation|xbox|free fire|clash royale|elden ring)\b/i.test(text)
+  ) {
+    return "Gaming";
+  }
+
+  // 2. Music & Audio
+  if (
+    categoryId === "10" ||
+    /\b(music|song|audio|soundtrack|concert|album|lyrics|singer|rap|beat|remix|melody|acoustic|track|instrumental|band|orchestra|spotify)\b/i.test(text)
+  ) {
+    return "Music & Audio";
+  }
+
+  // 3. Coding & Tech
+  if (
+    /\b(code|coding|programming|developer|javascript|typescript|python|react|nextjs|software|hardware|devops|fullstack|frontend|backend|css|html|github|git|api|database|sql|linux|docker|aws|bug|compile|web dev|cybersecurity|terminal)\b/i.test(text)
+  ) {
+    return "Coding & Tech";
+  }
+
+  // 4. Science & Wonders
+  if (
+    categoryId === "27" ||
+    /\b(science|physics|biology|chemistry|mathematics|math|quantum|astronomy|cosmos|space|scientific|experiment|universe|nasa|isro|microscope|telescope|dna|evolution|physics wallah|unacademy)\b/i.test(text)
+  ) {
+    return "Science & Wonders";
+  }
+
+  // 5. Documentaries
+  if (
+    categoryId === "35" ||
+    /\b(documentary|biography|investigation|historical documentary|uncovered|chronicle|untold story|case study|geopolitics)\b/i.test(text)
+  ) {
+    return "Documentaries";
+  }
+
+  // 6. Podcasts & Talks
+  if (
+    /\b(podcast|interview|talk show|discussion|conversation|speeches|ted talk|in conversation with|q&a|beerbiceps|the ranveer show)\b/i.test(text)
+  ) {
+    return "Podcasts & Talks";
+  }
+
+  // 7. Cinema & Films
+  if (
+    categoryId === "1" ||
+    categoryId === "30" ||
+    categoryId === "44" ||
+    /\b(cinema|film|movie|trailer|teaser|short film|scene|actor|director|box office|movie review|netflix|web series|episode)\b/i.test(text)
+  ) {
+    return "Cinema & Films";
+  }
+
+  // 8. Art & Animation
+  if (
+    categoryId === "31" ||
+    /\b(art|animation|anime|drawing|illustration|sketch|digital art|speedpaint|3d render|blender 3d|vfx|cgi)\b/i.test(text)
+  ) {
+    return "Art & Animation";
+  }
+
+  // 9. Culture & Travel
+  if (
+    categoryId === "19" ||
+    /\b(travel|culture|tourism|heritage|voyage|explore|city tour|road trip|backpacking|flight|hotel|destination|india|japan|europe|village)\b/i.test(text)
+  ) {
+    return "Culture & Travel";
+  }
+
+  // 10. Vlogs / Lifestyle / Pranks / Entertainment
+  // YouTube Category 22 (People & Blogs), 23 (Comedy), 24 (Entertainment)
+  if (
+    categoryId === "22" ||
+    categoryId === "23" ||
+    categoryId === "24" ||
+    /\b(vlog|daily vlog|lifestyle|prank|challenge|spent|spend|eating|shopping|day in my life|rebuild|friend|friends|family|fukra|insaan|sourav joshi|latent|funny|comedy|roast)\b/i.test(text)
+  ) {
+    return "Vlogs";
+  }
+
+  if (categoryId === "28") return "Coding & Tech";
+
+  return "Vlogs";
+}
 
 /**
  * Fetches the user's subscribed channels using their Google OAuth access token.
@@ -276,7 +377,7 @@ export async function fetchSubscribedLongFormVideos(
         uploaderName: channelTitle,
         uploaderAvatar: avatar,
         uploaderHandle: channelTitle.toLowerCase().replace(/\s+/g, "_"),
-        category: contentType === "productive" ? "Coding & Tech" : contentType === "entertainment" ? "Gaming" : "Subscribed",
+        category: determineVideoCategory(categoryId, title, description, tags, channelTitle),
         tags,
         views: parseInt(item.statistics?.viewCount || "0", 10),
         likesCount: parseInt(item.statistics?.likeCount || "0", 10),
@@ -323,7 +424,7 @@ export async function fetchChannelLongFormVideos(
 ): Promise<Video[]> {
   if (!accessToken || !channelId) return [];
 
-  const cacheKey = `citra_channel_feed_${channelId}`;
+  const cacheKey = `citra_channel_feed_v5_${channelId}`;
   if (!force && typeof window !== "undefined") {
     try {
       const cached = sessionStorage.getItem(cacheKey);
@@ -439,7 +540,7 @@ export async function fetchChannelLongFormVideos(
         uploaderName: effectiveChannelTitle,
         uploaderAvatar: avatar,
         uploaderHandle: effectiveChannelTitle.toLowerCase().replace(/\s+/g, "_"),
-        category: contentType === "productive" ? "Coding & Tech" : contentType === "entertainment" ? "Gaming" : "Subscribed",
+        category: determineVideoCategory(categoryId, title, description, tags, effectiveChannelTitle),
         tags,
         views: parseInt(item.statistics?.viewCount || "0", 10),
         likesCount: parseInt(item.statistics?.likeCount || "0", 10),
@@ -481,15 +582,18 @@ const PRODUCTIVE_KEYWORDS = [
   "astronomy", "cosmos", "documentary", "history", "biography", "philosophy",
   "productivity", "deep work", "focus", "habit", "study", "business",
   "finance", "investing", "economics", "startup", "architecture", "design",
-  "tech", "system design", "database", "cybersecurity", "linux", "cloud"
+  "tech", "system design", "database", "cybersecurity", "linux", "cloud", "ielts", "toefl"
 ];
 
 const ENTERTAINMENT_KEYWORDS = [
   "gameplay", "gaming", "streamer", "walkthrough", "let's play", "esports",
   "trailer", "teaser", "movie", "cinema", "film clip", "scene",
   "music video", "official audio", "song", "remix", "cover", "album", "lyrics",
-  "comedy", "funny", "meme", "prank", "sketch", "roast", "standup",
-  "vlog", "daily vlog", "challenge", "reaction", "reacting", "drama"
+  "comedy", "funny", "meme", "prank", "pranks", "sketch", "roast", "standup",
+  "vlog", "daily vlog", "challenge", "challenges", "reaction", "reacting", "drama",
+  "spent", "spend", "rebuild", "luxury", "fake", "insaan", "fukra", "lifestyle",
+  "entertainment", "unboxing", "shopping", "surprise", "road rage", "sister", "brother",
+  "24 hours", "overnight", "expensive", "cheap", "crore", "lakh", "latent", "india's got latent"
 ];
 
 /**
@@ -506,12 +610,13 @@ export function classifyVideoContent(
 
   // 1. YouTube Category ID weights
   if (categoryId) {
-    if (categoryId === "27" || categoryId === "28") score += 30; // Education, Science & Tech
+    if (categoryId === "27" || categoryId === "28") score += 35; // Education, Science & Tech
     else if (categoryId === "26") score += 20; // Howto & Style
     else if (categoryId === "25") score += 10; // News & Politics
-    else if (categoryId === "10") score -= 25; // Music
-    else if (categoryId === "20") score -= 25; // Gaming
-    else if (categoryId === "23" || categoryId === "24") score -= 20; // Comedy, Entertainment
+    else if (categoryId === "10") score -= 30; // Music
+    else if (categoryId === "20") score -= 30; // Gaming
+    else if (categoryId === "23" || categoryId === "24") score -= 35; // Comedy, Entertainment
+    else if (categoryId === "22") score -= 30; // People & Blogs
   }
 
   // 2. Keyword analysis
@@ -527,8 +632,8 @@ export function classifyVideoContent(
     if (combinedText.includes(kw)) entertainmentMatches++;
   }
 
-  score += Math.min(productiveMatches * 8, 40);
-  score -= Math.min(entertainmentMatches * 8, 40);
+  score += Math.min(productiveMatches * 10, 45);
+  score -= Math.min(entertainmentMatches * 12, 50);
 
   const finalScore = Math.max(0, Math.min(100, score));
 

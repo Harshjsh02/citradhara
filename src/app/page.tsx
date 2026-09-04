@@ -479,8 +479,18 @@ function HomeFeed() {
             </div>
           )}
 
-          {/* Active View Header Bar (Channel / Playlist / Watch Later Filter) */}
-          {(isWatchLaterView || selectedChannel || selectedPlaylist || urlQuery) && (
+          {/* Horizontal Category Chips Bar (YouTube-style) */}
+          <CategoryChips
+            selected={selectedCategory}
+            onSelect={(cat) => {
+              setSelectedCategory(cat);
+              setIsWatchLaterView(false);
+              setSelectedPlaylistId(null);
+            }}
+          />
+
+          {/* Active View Header Bar (Channel / Playlist / Watch Later / Category Filter) */}
+          {(isWatchLaterView || selectedChannel || selectedPlaylist || (selectedCategory && selectedCategory !== "All") || urlQuery) && (
             <div className="py-2.5 flex items-center justify-between border-b border-[#181822] mb-4 text-xs">
               <div className="flex items-center gap-2 text-zinc-300">
                 {isWatchLaterView ? (
@@ -497,6 +507,11 @@ function HomeFeed() {
                   <span className="flex items-center gap-1.5 font-bold text-amber-400">
                     <Film className="h-4 w-4" />
                     <span>Channel: {selectedChannel.title}</span>
+                  </span>
+                ) : selectedCategory && selectedCategory !== "All" ? (
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Category: {selectedCategory}</span>
                   </span>
                 ) : urlQuery ? (
                   <span className="flex items-center gap-1.5 text-zinc-200">
@@ -517,6 +532,7 @@ function HomeFeed() {
                   setIsWatchLaterView(false);
                   setSelectedChannelId(null);
                   setSelectedPlaylistId(null);
+                  setSelectedCategory("All");
                 }}
                 className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition"
               >
