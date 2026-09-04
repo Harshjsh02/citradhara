@@ -91,7 +91,7 @@ export default function WatchPage() {
           description: "Subscribed YouTube stream",
           driveFileId: videoId,
           driveUrl: `https://www.youtube.com/watch?v=${videoId}`,
-          embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`,
+          embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`,
           thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           uploaderUid: "youtube_creator",
           uploaderName: "YouTube Creator",
