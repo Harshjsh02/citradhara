@@ -6,14 +6,12 @@ import { History, Trash2, Video as VideoIcon } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import VideoCard from "@/components/VideoCard";
-import UploadModal from "@/components/UploadModal";
 import { Video } from "@/types";
 import { fetchVideos, getWatchHistoryIds } from "@/lib/db";
 
 export default function HistoryPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +45,6 @@ export default function HistoryPage() {
     <div className="min-h-screen bg-[#090a0f] text-[#f3f4f6]">
       <Navbar
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onOpenUpload={() => setIsUploadOpen(true)}
       />
 
       <div className="flex">
@@ -108,8 +105,6 @@ export default function HistoryPage() {
           )}
         </main>
       </div>
-
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
     </div>
   );
 }

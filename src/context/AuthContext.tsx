@@ -5,6 +5,7 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut, 
   onAuthStateChanged,
+  GoogleAuthProvider,
   User as FirebaseUser 
 } from "firebase/auth";
 import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
@@ -20,6 +21,7 @@ interface AuthContextType {
   user: UserAuth | null;
   loading: boolean;
   isFirebaseActive: boolean;
+  googleAccessToken: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -28,17 +30,26 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isFirebaseActive: false,
+  googleAccessToken: null,
   signInWithGoogle: async () => {},
   signOut: async () => {},
 });
 
 const DEMO_USER_KEY = "citradhara_demo_user";
+const YT_TOKEN_KEY = "citradhara_google_yt_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserAuth | null>(null);
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for existing saved token
+    if (typeof window !== "undefined") {
+      const savedToken = localStorage.getItem(YT_TOKEN_KEY);
+      if (savedToken) setGoogleAccessToken(savedToken);
+    }
+
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
         if (firebaseUser) {
@@ -50,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         } else {
           setUser(null);
+          setGoogleAccessToken(null);
+          localStorage.removeItem(YT_TOKEN_KEY);
         }
         setLoading(false);
       });
@@ -79,6 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: result.user.email,
             photoURL: result.user.photoURL,
           });
+        }
+
+        // Extract Google OAuth Access Token for YouTube API calls
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken || null;
+        if (token) {
+          setGoogleAccessToken(token);
+          localStorage.setItem(YT_TOKEN_KEY, token);
         }
       } catch (error: any) {
         console.warn("Google Sign-in status:", error?.code, error?.message);
@@ -117,6 +138,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    localStorage.removeItem(YT_TOKEN_KEY);
+    setGoogleAccessToken(null);
+
     if (isFirebaseConfigured && auth) {
       try {
         await firebaseSignOut(auth);
@@ -135,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isFirebaseActive: isFirebaseConfigured,
+        googleAccessToken,
         signInWithGoogle,
         signOut,
       }}

@@ -42,6 +42,17 @@ export function parseVideoUrl(input: string): VideoSourceDetails | null {
     };
   }
 
+  // Pattern 1b: Raw 11-character YouTube video ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return {
+      source: "youtube",
+      id: trimmed,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${trimmed}?autoplay=1&rel=0`,
+      thumbnailUrl: `https://img.youtube.com/vi/${trimmed}/hqdefault.jpg`,
+      viewUrl: `https://www.youtube.com/watch?v=${trimmed}`
+    };
+  }
+
   // Pattern 2: Google Drive /file/d/ or /file/u/0/d/
   const fileDMatch = trimmed.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/);
   if (fileDMatch && fileDMatch[1]) {

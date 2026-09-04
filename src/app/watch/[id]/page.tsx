@@ -21,7 +21,6 @@ import Navbar from "@/components/Navbar";
 import VideoPlayer from "@/components/VideoPlayer";
 import CommentSection from "@/components/CommentSection";
 import ShareModal from "@/components/ShareModal";
-import UploadModal from "@/components/UploadModal";
 import { formatViewCount } from "@/components/VideoCard";
 import { Video } from "@/types";
 import { 
@@ -50,7 +49,6 @@ export default function WatchPage() {
   const [isTheater, setIsTheater] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   // User engagement states
   const [isLiked, setIsLiked] = useState(false);
@@ -64,7 +62,52 @@ export default function WatchPage() {
 
     async function loadData() {
       setLoading(true);
-      const data = await fetchVideoById(videoId);
+      let data = await fetchVideoById(videoId);
+
+      // If not in database, check cached YouTube subscription feed
+      if (!data && typeof window !== "undefined") {
+        try {
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key?.startsWith("citra_yt_feed_")) {
+              const cached = JSON.parse(sessionStorage.getItem(key) || "{}");
+              if (cached?.data && Array.isArray(cached.data)) {
+                const match = cached.data.find((v: Video) => v.id === videoId);
+                if (match) {
+                  data = match;
+                  break;
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // If still not found and is an 11-char YouTube ID, construct video item
+      if (!data && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+        data = {
+          id: videoId,
+          title: "YouTube Video",
+          description: "Subscribed YouTube stream",
+          driveFileId: videoId,
+          driveUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`,
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          uploaderUid: "youtube_creator",
+          uploaderName: "YouTube Creator",
+          uploaderAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+          uploaderHandle: "creator",
+          category: "Subscribed",
+          tags: ["youtube"],
+          views: 0,
+          likesCount: 0,
+          dislikesCount: 0,
+          commentsCount: 0,
+          duration: "Video",
+          createdAt: new Date().toISOString(),
+        };
+      }
+
       if (data) {
         setVideo(data);
         setLikesCount(data.likesCount);
@@ -76,9 +119,27 @@ export default function WatchPage() {
         incrementVideoViews(videoId);
         recordWatchHistory(videoId);
 
-        // Fetch recommendations
-        const allVideos = await fetchVideos();
-        const recs = allVideos.filter((v) => v.id !== videoId).slice(0, 10);
+        // Fetch recommendations: prefer cached subscription feed, else local
+        let recs: Video[] = [];
+        if (typeof window !== "undefined") {
+          try {
+            for (let i = 0; i < sessionStorage.length; i++) {
+              const key = sessionStorage.key(i);
+              if (key?.startsWith("citra_yt_feed_")) {
+                const cached = JSON.parse(sessionStorage.getItem(key) || "{}");
+                if (cached?.data && Array.isArray(cached.data)) {
+                  recs = cached.data.filter((v: Video) => v.id !== videoId).slice(0, 10);
+                  break;
+                }
+              }
+            }
+          } catch {}
+        }
+
+        if (recs.length === 0) {
+          const allVideos = await fetchVideos();
+          recs = allVideos.filter((v) => v.id !== videoId).slice(0, 10);
+        }
         setRecommendations(recs);
       }
       setLoading(false);
@@ -144,7 +205,7 @@ export default function WatchPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#090a0f] text-white">
-        <Navbar onOpenUpload={() => setIsUploadOpen(true)} />
+        <Navbar />
         <div className="max-w-7xl mx-auto p-6 animate-pulse space-y-4">
           <div className="aspect-video w-full max-w-5xl rounded-3xl bg-[#141624]" />
           <div className="h-6 w-3/4 rounded bg-[#1e2135]" />
@@ -157,7 +218,7 @@ export default function WatchPage() {
   if (!video) {
     return (
       <div className="min-h-screen bg-[#090a0f] text-white">
-        <Navbar onOpenUpload={() => setIsUploadOpen(true)} />
+        <Navbar />
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <h2 className="text-2xl font-bold mb-2">Wonder Stream Not Found</h2>
           <p className="text-zinc-400 text-sm mb-6">The requested video may have been moved or removed.</p>
@@ -182,7 +243,7 @@ export default function WatchPage() {
   return (
     <div className="min-h-screen bg-[#090a0f] text-[#f3f4f6]">
       {/* Top Navbar */}
-      <Navbar onOpenUpload={() => setIsUploadOpen(true)} />
+      <Navbar />
 
       {/* Main Watch Layout */}
       <div className="max-w-[1700px] mx-auto p-4 sm:p-6">
@@ -403,12 +464,6 @@ export default function WatchPage() {
         onClose={() => setIsShareOpen(false)}
         videoTitle={video.title}
         videoId={video.id}
-      />
-
-      {/* Upload Modal */}
-      <UploadModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
       />
     </div>
   );

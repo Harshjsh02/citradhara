@@ -8,7 +8,6 @@ import { CheckCircle2, Video as VideoIcon, Sparkles, User, Info, Pencil, Trash2,
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import VideoCard from "@/components/VideoCard";
-import UploadModal from "@/components/UploadModal";
 import EditChannelModal from "@/components/EditChannelModal";
 import { Video, UserProfile } from "@/types";
 import { fetchVideos, toggleSubscription, isChannelSubscribed, deleteVideo, fetchUserProfile } from "@/lib/db";
@@ -29,7 +28,6 @@ export default function ChannelPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [activeTab, setActiveTab] = useState<"videos" | "about">("videos");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -129,7 +127,6 @@ export default function ChannelPage() {
     <div className="min-h-screen bg-[#08080a] text-[#f4f4f6]">
       <Navbar
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onOpenUpload={() => setIsUploadOpen(true)}
       />
 
       <div className="flex">
@@ -199,24 +196,13 @@ export default function ChannelPage() {
               {/* Action Buttons */}
               <div className="flex items-center gap-2.5 mb-2">
                 {/* Edit Channel Button */}
-                {isOwnChannel && (
+                {isOwnChannel ? (
                   <button
                     onClick={() => setIsEditModalOpen(true)}
                     className="flex items-center gap-1.5 rounded-full border border-[#222230] bg-[#121218] hover:bg-[#1a1a24] px-4 py-2 text-xs font-semibold text-zinc-200 hover:text-white transition shadow-sm"
                   >
                     <Pencil className="h-3.5 w-3.5 text-amber-400" />
                     <span>Edit Channel</span>
-                  </button>
-                )}
-
-                {/* Upload Stream Button */}
-                {isOwnChannel ? (
-                  <button
-                    onClick={() => setIsUploadOpen(true)}
-                    className="flex items-center gap-1.5 rounded-full bg-white text-black hover:bg-zinc-200 px-4 py-2 text-xs font-semibold transition shadow-sm"
-                  >
-                    <VideoIcon className="h-3.5 w-3.5" />
-                    <span>Upload Stream</span>
                   </button>
                 ) : (
                   <button
@@ -268,17 +254,9 @@ export default function ChannelPage() {
                 <div className="rounded-2xl border border-[#181822] bg-[#101015] p-10 text-center">
                   <VideoIcon className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
                   <h3 className="text-base font-bold text-white mb-1">No streams uploaded yet</h3>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-4">
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
                     This creator has not streamed any videos on Citradhara yet.
                   </p>
-                  {isOwnChannel && (
-                    <button
-                      onClick={() => setIsUploadOpen(true)}
-                      className="rounded-full bg-white text-black px-5 py-2 text-xs font-semibold hover:bg-zinc-200 transition"
-                    >
-                      Upload your first stream
-                    </button>
-                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
@@ -355,7 +333,6 @@ export default function ChannelPage() {
         </main>
       </div>
 
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
       <EditChannelModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { 
   Menu, 
   Search, 
-  Plus, 
   Bell, 
   X, 
   LogOut, 
@@ -20,11 +19,10 @@ import { useAuth } from "@/context/AuthContext";
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
-  onOpenUpload?: () => void;
   initialSearchQuery?: string;
 }
 
-export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQuery = "" }: NavbarProps) {
+export default function Navbar({ onToggleSidebar, initialSearchQuery = "" }: NavbarProps) {
   const router = useRouter();
   const { user, signInWithGoogle, signOut, isFirebaseActive } = useAuth();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -109,14 +107,6 @@ export default function Navbar({ onToggleSidebar, onOpenUpload, initialSearchQue
           <Search className="h-4 w-4" />
         </button>
 
-        {/* Upload Button */}
-        <button
-          onClick={onOpenUpload}
-          className="flex items-center gap-1.5 rounded-full bg-[#181824] hover:bg-[#222232] border border-[#272738] px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:text-white active:scale-95 transition"
-        >
-          <Plus className="h-3.5 w-3.5 text-amber-400" />
-          <span>Upload</span>
-        </button>
 
         {/* Notifications */}
         <div className="relative" ref={notifMenuRef}>

@@ -19,11 +19,15 @@ import {
   ThumbsUp
 } from "lucide-react";
 import { CATEGORIES } from "@/types";
+import { YouTubeSubscription } from "@/lib/youtubeApi";
 
 interface SidebarProps {
   isOpen: boolean;
   selectedCategory?: string;
   onSelectCategory?: (category: string) => void;
+  subscriptions?: YouTubeSubscription[];
+  selectedChannelId?: string | null;
+  onSelectChannel?: (channelId: string | null) => void;
   onClose?: () => void;
 }
 
@@ -41,7 +45,15 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Documentaries": <Tv className="h-4 w-4 text-zinc-300" />
 };
 
-export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCategory, onClose }: SidebarProps) {
+export default function Sidebar({
+  isOpen,
+  selectedCategory = "All",
+  onSelectCategory,
+  subscriptions = [],
+  selectedChannelId = null,
+  onSelectChannel,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -66,16 +78,17 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
             href="/"
             onClick={() => {
               if (onSelectCategory) onSelectCategory("All");
+              if (onSelectChannel) onSelectChannel(null);
               if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
             }}
             className={`flex items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
-              pathname === "/" && selectedCategory === "All"
+              pathname === "/" && selectedCategory === "All" && !selectedChannelId
                 ? "bg-[#14141c] text-white font-semibold"
                 : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
             }`}
           >
             <Home className="h-4 w-4 text-zinc-300 shrink-0" />
-            <span className={`${!isOpen ? "lg:hidden" : ""}`}>Home</span>
+            <span className={`${!isOpen ? "lg:hidden" : ""}`}>All Subscriptions</span>
           </Link>
 
           <Link
@@ -107,6 +120,60 @@ export default function Sidebar({ isOpen, selectedCategory = "All", onSelectCate
             <ThumbsUp className="h-4 w-4 text-zinc-300 shrink-0" />
             <span className={`${!isOpen ? "lg:hidden" : ""}`}>Liked</span>
           </Link>
+        </div>
+
+        {/* Subscribed Channels */}
+        <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
+          <div className="px-3 pb-1 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Subscriptions
+            </span>
+            {subscriptions && subscriptions.length > 0 && (
+              <span className="text-[10px] text-amber-400 font-mono">
+                {subscriptions.length}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-0.5">
+            {subscriptions && subscriptions.length > 0 ? (
+              subscriptions.map((sub) => {
+                const isSelected = selectedChannelId === sub.channelId;
+                return (
+                  <button
+                    key={sub.channelId}
+                    onClick={() => {
+                      if (onSelectChannel) {
+                        onSelectChannel(isSelected ? null : sub.channelId);
+                      }
+                      if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+                    }}
+                    title={sub.title}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
+                      isSelected
+                        ? "bg-[#181824] text-amber-400 font-semibold border border-amber-500/30"
+                        : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sub.thumbnail}
+                      alt={sub.title}
+                      className="h-5 w-5 rounded-full object-cover shrink-0 border border-zinc-700/50"
+                    />
+                    <span className="truncate">{sub.title}</span>
+                    {isSelected && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-2 text-[11px] text-zinc-500">
+                Sign in to view your subscriptions.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Categories / Streams of Wonder */}

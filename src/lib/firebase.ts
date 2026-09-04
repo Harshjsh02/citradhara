@@ -31,6 +31,7 @@ if (isFirebaseConfigured) {
     db = getFirestore(app);
     storage = getStorage(app);
     googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope("https://www.googleapis.com/auth/youtube.readonly");
   } catch (error) {
     console.warn("Firebase initialization error:", error);
   }
