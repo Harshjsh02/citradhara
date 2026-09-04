@@ -288,6 +288,7 @@ function HomeFeed() {
       <div className="flex">
         <Sidebar
           isOpen={isSidebarOpen}
+          onOpenSidebar={() => setIsSidebarOpen(true)}
           selectedCategory={selectedCategory}
           onSelectCategory={(cat) => {
             setSelectedCategory(cat);

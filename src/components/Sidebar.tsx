@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Home, 
   Compass, 
@@ -33,6 +33,7 @@ import {
 
 interface SidebarProps {
   isOpen: boolean;
+  onOpenSidebar?: () => void;
   selectedCategory?: string;
   onSelectCategory?: (category: string) => void;
   subscriptions?: YouTubeSubscription[];
@@ -61,6 +62,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 
 export default function Sidebar({
   isOpen,
+  onOpenSidebar,
   selectedCategory = "All",
   onSelectCategory,
   subscriptions = [],
@@ -73,6 +75,7 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [watchLaterCount, setWatchLaterCount] = useState(0);
   const [customPlaylists, setCustomPlaylists] = useState<Playlist[]>([]);
 
@@ -397,6 +400,30 @@ export default function Sidebar({
           >
             <ListVideo className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
             <span className="text-[10px] leading-tight font-normal">Playlists</span>
+          </button>
+
+          {/* Explore Wonders */}
+          <button
+            onClick={() => {
+              if (pathname !== "/") {
+                router.push("/");
+              }
+              if (onSelectCategory) onSelectCategory("All");
+              if (onSelectChannel) onSelectChannel(null);
+              if (onSelectPlaylist) onSelectPlaylist(null);
+              if (onOpenSidebar) {
+                onOpenSidebar();
+              }
+            }}
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition ${
+              selectedCategory && selectedCategory !== "All"
+                ? "bg-[#181826] text-amber-400 font-semibold border border-amber-500/30"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="Explore Wonders"
+          >
+            <Compass className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal text-center">Explore Wonders</span>
           </button>
 
           {/* Subscriptions */}

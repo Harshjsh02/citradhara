@@ -48,7 +48,11 @@ export default function HistoryPage() {
       />
 
       <div className="flex">
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onOpenSidebar={() => setIsSidebarOpen(true)} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
 
         <main
           className={`flex-1 px-4 sm:px-6 py-6 transition-all duration-300 ${
