@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import CategoryChips from "@/components/CategoryChips";
 import VideoCard from "@/components/VideoCard";
 import { Video, FeedMode, Playlist } from "@/types";
 import { fetchVideos } from "@/lib/db";
@@ -319,8 +318,8 @@ function HomeFeed() {
 
         <main
           className={`flex-1 min-w-0 px-4 sm:px-6 pb-16 transition-all duration-300 ${
-            isSidebarOpen ? "lg:ml-60" : "ml-0"
-          }`}
+            isSidebarOpen ? "lg:ml-60" : "lg:ml-[72px]"
+          } ml-0`}
         >
           {/* Guest Welcome Banner if not signed in */}
           {!user && (
@@ -400,12 +399,91 @@ function HomeFeed() {
             </section>
           )}
 
-          {/* ==================== FOCUS MODE & ORDERING BAR ==================== */}
-          {/* Mode Selector Chips are hidden when left sidebar is open! */}
-          {(!isSidebarOpen || (user && subscriptions.length > 0)) && (
-            <div className={`my-3 flex flex-wrap items-center ${isSidebarOpen ? "justify-end" : "justify-between"} gap-3 border-b border-[#181822] pb-3`}>
+          {/* ==================== TOP ACTION & FOCUS MODE BAR ==================== */}
+          <div className="my-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#181822] pb-3">
+            {/* Left side: Active Filter Indicator or Subscribed Feed Badge */}
+            <div className="flex items-center gap-2 text-xs">
+              {isWatchLaterView ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Watch Later Queue</span>
+                  </span>
+                  <button
+                    onClick={() => setIsWatchLaterView(false)}
+                    className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                    title="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : selectedPlaylist ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                    <ListVideo className="h-3.5 w-3.5" />
+                    <span>Playlist: {selectedPlaylist.title}</span>
+                  </span>
+                  <button
+                    onClick={() => setSelectedPlaylistId(null)}
+                    className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                    title="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : selectedChannel ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                    <Film className="h-3.5 w-3.5" />
+                    <span>Channel: {selectedChannel.title}</span>
+                  </span>
+                  <button
+                    onClick={() => setSelectedChannelId(null)}
+                    className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                    title="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : selectedCategory && selectedCategory !== "All" ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Category: {selectedCategory}</span>
+                  </span>
+                  <button
+                    onClick={() => setSelectedCategory("All")}
+                    className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                    title="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : urlQuery ? (
+                <div className="flex items-center gap-2 text-zinc-200">
+                  <Search className="h-4 w-4 text-amber-400" />
+                  <span>Search: &ldquo;{urlQuery}&rdquo;</span>
+                  <Link href="/" className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition">
+                    <X className="h-3 w-3" />
+                  </Link>
+                </div>
+              ) : (
+                <span className="text-xs font-semibold text-zinc-400 flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Subscribed Long-Form Feed</span>
+                </span>
+              )}
+
+              <span className="text-zinc-500 font-mono text-[11px] hidden sm:inline">
+                • {processedVideos.length} videos
+              </span>
+            </div>
+
+            {/* Right side: Focus Mode Selector Buttons & Live Auto-Sync Status */}
+            <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+              {/* Mode Selector Chips: Hidden when sidebar is open! */}
               {!isSidebarOpen && (
-                <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
                   <button
                     onClick={() => setFeedMode("productive-first")}
                     className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
@@ -477,70 +555,7 @@ function HomeFeed() {
                 </button>
               )}
             </div>
-          )}
-
-          {/* Horizontal Category Chips Bar (YouTube-style) */}
-          <CategoryChips
-            selected={selectedCategory}
-            onSelect={(cat) => {
-              setSelectedCategory(cat);
-              setIsWatchLaterView(false);
-              setSelectedPlaylistId(null);
-            }}
-          />
-
-          {/* Active View Header Bar (Channel / Playlist / Watch Later / Category Filter) */}
-          {(isWatchLaterView || selectedChannel || selectedPlaylist || (selectedCategory && selectedCategory !== "All") || urlQuery) && (
-            <div className="py-2.5 flex items-center justify-between border-b border-[#181822] mb-4 text-xs">
-              <div className="flex items-center gap-2 text-zinc-300">
-                {isWatchLaterView ? (
-                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                    <Clock className="h-4 w-4" />
-                    <span>Watch Later Queue</span>
-                  </span>
-                ) : selectedPlaylist ? (
-                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                    <ListVideo className="h-4 w-4" />
-                    <span>Playlist: {selectedPlaylist.title}</span>
-                  </span>
-                ) : selectedChannel ? (
-                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                    <Film className="h-4 w-4" />
-                    <span>Channel: {selectedChannel.title}</span>
-                  </span>
-                ) : selectedCategory && selectedCategory !== "All" ? (
-                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                    <Sparkles className="h-4 w-4" />
-                    <span>Category: {selectedCategory}</span>
-                  </span>
-                ) : urlQuery ? (
-                  <span className="flex items-center gap-1.5 text-zinc-200">
-                    <Search className="h-4 w-4 text-amber-400" />
-                    <span>Search results for: &ldquo;{urlQuery}&rdquo;</span>
-                  </span>
-                ) : null}
-
-                <span className="text-zinc-600">•</span>
-                <span className="text-zinc-400 font-mono text-[11px]">
-                  {processedVideos.length} videos
-                </span>
-              </div>
-
-              {/* Clear active filter button */}
-              <button
-                onClick={() => {
-                  setIsWatchLaterView(false);
-                  setSelectedChannelId(null);
-                  setSelectedPlaylistId(null);
-                  setSelectedCategory("All");
-                }}
-                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition"
-              >
-                <X className="h-3 w-3" />
-                <span>Clear Filter</span>
-              </button>
-            </div>
-          )}
+          </div>
 
           {/* Channel Deep Loading Notification */}
           {channelLoading && selectedChannel && (

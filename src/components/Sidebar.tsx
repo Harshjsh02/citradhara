@@ -16,10 +16,11 @@ import {
   Tv, 
   Video,
   History, 
-  ThumbsUp,
+  ThumbsUp, 
   Clock,
   ListVideo,
-  Plus
+  Plus,
+  User
 } from "lucide-react";
 import { CATEGORIES, Playlist } from "@/types";
 import { YouTubeSubscription } from "@/lib/youtubeApi";
@@ -102,9 +103,10 @@ export default function Sidebar({
 
       <aside
         className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col border-r border-[#161620] bg-[#08080a] transition-all duration-300 overflow-y-auto ${
-          isOpen ? "w-60 translate-x-0 shadow-2xl" : "w-60 -translate-x-full pointer-events-none"
+          isOpen ? "w-60 translate-x-0 shadow-2xl" : "w-0 -translate-x-full lg:w-[72px] lg:translate-x-0"
         }`}
       >
+      {isOpen ? (
       <div className="flex-1 space-y-5 py-3 px-2">
         {/* Main Feed Links: Home & Watch Later */}
         <div className="space-y-0.5">
@@ -338,6 +340,98 @@ export default function Sidebar({
           </div>
         </div>
       </div>
+      ) : (
+        /* Collapsed Desktop Mini-Rail (Important Logos Only, YouTube-style) */
+        <div className="hidden lg:flex flex-col items-center py-3 px-1 space-y-2 w-full">
+          {/* Home */}
+          <Link
+            href="/"
+            onClick={() => {
+              if (onSelectCategory) onSelectCategory("All");
+              if (onSelectChannel) onSelectChannel(null);
+              if (onSelectPlaylist) onSelectPlaylist(null);
+            }}
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition ${
+              pathname === "/" && selectedCategory === "All" && !selectedChannelId && !isWatchLaterActive && !selectedPlaylistId
+                ? "bg-[#14141c] text-white font-semibold"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="Home"
+          >
+            <Home className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal">Home</span>
+          </Link>
+
+          {/* Watch Later */}
+          <button
+            onClick={() => {
+              if (onToggleWatchLaterView) onToggleWatchLaterView();
+            }}
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition relative ${
+              isWatchLaterActive
+                ? "bg-[#181826] text-amber-400 font-semibold border border-amber-500/30"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="Watch Later"
+          >
+            <Clock className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal">Watch Later</span>
+            {watchLaterCount > 0 && (
+              <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-amber-400" />
+            )}
+          </button>
+
+          {/* Playlists */}
+          <button
+            onClick={() => {
+              if (customPlaylists.length > 0 && onSelectPlaylist) {
+                onSelectPlaylist(selectedPlaylistId ? null : customPlaylists[0].id);
+              }
+            }}
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition ${
+              selectedPlaylistId
+                ? "bg-[#181826] text-amber-400 font-semibold border border-amber-500/30"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="Playlists"
+          >
+            <ListVideo className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal">Playlists</span>
+          </button>
+
+          {/* Subscriptions */}
+          <button
+            onClick={() => {
+              if (onSelectChannel) {
+                onSelectChannel(null);
+              }
+            }}
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition ${
+              selectedChannelId
+                ? "bg-[#181826] text-amber-400 font-semibold border border-amber-500/30"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="Subscriptions"
+          >
+            <Tv className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal">Subscriptions</span>
+          </button>
+
+          {/* You / History */}
+          <Link
+            href="/history"
+            className={`flex flex-col items-center justify-center w-full py-3.5 px-1 rounded-xl text-center transition ${
+              pathname === "/history"
+                ? "bg-[#14141c] text-white font-semibold"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+            title="You"
+          >
+            <User className="h-5 w-5 mb-1.5 text-zinc-300 shrink-0" />
+            <span className="text-[10px] leading-tight font-normal">You</span>
+          </Link>
+        </div>
+      )}
     </aside>
     </>
   );

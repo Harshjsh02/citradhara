@@ -52,8 +52,8 @@ export default function HistoryPage() {
 
         <main
           className={`flex-1 px-4 sm:px-6 py-6 transition-all duration-300 ${
-            isSidebarOpen ? "lg:ml-60" : "ml-0"
-          }`}
+            isSidebarOpen ? "lg:ml-60" : "lg:ml-[72px]"
+          } ml-0`}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#1f2230] pb-4 mb-6">
