@@ -420,7 +420,8 @@ export async function fetchChannelLongFormVideos(
   channelId: string,
   channelTitle?: string,
   channelAvatar?: string,
-  force = false
+  force = false,
+  includeAll = false
 ): Promise<Video[]> {
   if (!accessToken || !channelId) return [];
 
@@ -503,7 +504,7 @@ export async function fetchChannelLongFormVideos(
       const rawDuration = item.contentDetails?.duration || "";
       const durationSeconds = parseISO8601Duration(rawDuration);
 
-      if (isShortsVideo(title, description, durationSeconds)) {
+      if (!includeAll && isShortsVideo(title, description, durationSeconds)) {
         continue;
       }
 
@@ -688,3 +689,325 @@ export function filterProductiveOnly(videos: Video[]): Video[] {
 export function filterEntertainmentOnly(videos: Video[]): Video[] {
   return videos.filter((v) => (v.productivityScore ?? 50) < 55 || v.contentType === 'entertainment');
 }
+
+export interface YouTubeChannelProfile {
+  channelId: string;
+  title: string;
+  handle: string;
+  description: string;
+  avatar: string;
+  banner: string;
+  subscribersCount: number;
+  videoCount: number;
+  uploadsPlaylistId: string;
+}
+
+/**
+ * Fetches the authenticated user's YouTube channel details using their Google OAuth access token.
+ */
+export async function fetchMyYouTubeChannel(accessToken: string): Promise<YouTubeChannelProfile | null> {
+  if (!accessToken) return null;
+
+  const cacheKey = "citra_my_yt_channel_v1";
+  if (typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_TTL_MS) {
+          return data;
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    const res = await fetch(
+      "https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,brandingSettings,statistics&mine=true",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) {
+      console.warn("fetchMyYouTubeChannel HTTP status:", res.status, res.statusText);
+      return null;
+    }
+
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item) return null;
+
+    const channelId = item.id || "";
+    const title = item.snippet?.title || "My YouTube Channel";
+    const rawHandle = item.snippet?.customUrl || `@${title.toLowerCase().replace(/\s+/g, "_")}`;
+    const handle = rawHandle.startsWith("@") ? rawHandle : `@${rawHandle}`;
+    const description = item.snippet?.description || "";
+    const avatar =
+      item.snippet?.thumbnails?.high?.url ||
+      item.snippet?.thumbnails?.medium?.url ||
+      item.snippet?.thumbnails?.default?.url ||
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
+    const banner =
+      item.brandingSettings?.image?.bannerExternalUrl ||
+      "linear-gradient(to right, #f59e0b, #e11d48, #4f46e5)";
+    const subscribersCount = parseInt(item.statistics?.subscriberCount || "0", 10);
+    const videoCount = parseInt(item.statistics?.videoCount || "0", 10);
+    const uploadsPlaylistId =
+      item.contentDetails?.relatedPlaylists?.uploads ||
+      (channelId.startsWith("UC") ? "UU" + channelId.substring(2) : "");
+
+    const profile: YouTubeChannelProfile = {
+      channelId,
+      title,
+      handle,
+      description,
+      avatar,
+      banner,
+      subscribersCount,
+      videoCount,
+      uploadsPlaylistId,
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: profile }));
+      } catch {}
+    }
+
+    return profile;
+  } catch (err) {
+    console.error("fetchMyYouTubeChannel exception:", err);
+    return null;
+  }
+}
+
+/**
+ * Fetches all videos uploaded by the authenticated user on their YouTube channel.
+ */
+export async function fetchMyYouTubeVideos(accessToken: string, force = false): Promise<Video[]> {
+  if (!accessToken) return [];
+
+  const cacheKey = "citra_my_yt_videos_v1";
+  if (!force && typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_TTL_MS) {
+          return data;
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    const channelProfile = await fetchMyYouTubeChannel(accessToken);
+    let uploadsPlaylistId = channelProfile?.uploadsPlaylistId || "";
+    const channelId = channelProfile?.channelId || "";
+    const channelTitle = channelProfile?.title || "Creator";
+    const channelAvatar = channelProfile?.avatar || "";
+
+    if (!uploadsPlaylistId && channelId.startsWith("UC")) {
+      uploadsPlaylistId = "UU" + channelId.substring(2);
+    }
+
+    let videoIds: string[] = [];
+
+    // 1. Try fetching from uploads playlist
+    if (uploadsPlaylistId) {
+      try {
+        const plRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        if (plRes.ok) {
+          const plJson = await plRes.json();
+          const items = plJson.items || [];
+          videoIds = items
+            .map((item: any) => item.contentDetails?.videoId || item.snippet?.resourceId?.videoId)
+            .filter(Boolean);
+        }
+      } catch (e) {
+        console.warn("Could not load from uploads playlist, trying fallback:", e);
+      }
+    }
+
+    // 2. Fallback: Search for user's own videos if playlistItems didn't return any
+    if (videoIds.length === 0) {
+      try {
+        const searchUrl = channelId
+          ? `https://www.googleapis.com/youtube/v3/search?channelId=${channelId}&part=snippet&order=date&maxResults=50&type=video`
+          : "https://www.googleapis.com/youtube/v3/search?forMine=true&part=snippet&order=date&maxResults=50&type=video";
+        const sRes = await fetch(searchUrl, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        });
+        if (sRes.ok) {
+          const sJson = await sRes.json();
+          const items = sJson.items || [];
+          videoIds = items.map((it: any) => it.id?.videoId).filter(Boolean);
+        }
+      } catch (e) {
+        console.warn("Could not search for user uploads:", e);
+      }
+    }
+
+    if (videoIds.length === 0) return [];
+
+    // 3. Batch query video details
+    const videoDetailsPromises: Promise<any[]>[] = [];
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const chunk = videoIds.slice(i, i + 50);
+      videoDetailsPromises.push(
+        fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${chunk.join(",")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          }
+        )
+          .then((res) => (res.ok ? res.json() : { items: [] }))
+          .then((json) => json.items || [])
+          .catch(() => [])
+      );
+    }
+
+    const videoDetailsResults = await Promise.all(videoDetailsPromises);
+    const videoItems = videoDetailsResults.flat();
+
+    const cleanVideos: Video[] = [];
+
+    for (const item of videoItems) {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const rawDuration = item.contentDetails?.duration || "";
+      const durationSeconds = parseISO8601Duration(rawDuration);
+      const effectiveChannelTitle = item.snippet?.channelTitle || channelTitle || "Creator";
+      const avatar =
+        channelAvatar ||
+        item.snippet?.thumbnails?.default?.url ||
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80";
+
+      const tags = item.snippet?.tags || ["youtube", "my-upload"];
+      const categoryId = item.snippet?.categoryId;
+
+      const { contentType, productivityScore } = classifyVideoContent(
+        title,
+        description,
+        tags,
+        effectiveChannelTitle,
+        categoryId
+      );
+
+      const vid: Video = {
+        id: item.id,
+        title,
+        description,
+        driveFileId: item.id,
+        driveUrl: `https://www.youtube.com/watch?v=${item.id}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0`,
+        thumbnailUrl:
+          item.snippet?.thumbnails?.maxres?.url ||
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
+        uploaderUid: channelId || item.snippet?.channelId || "my_channel",
+        uploaderName: effectiveChannelTitle,
+        uploaderAvatar: avatar,
+        uploaderHandle: effectiveChannelTitle.toLowerCase().replace(/\s+/g, "_"),
+        category: determineVideoCategory(categoryId, title, description, tags, effectiveChannelTitle),
+        tags,
+        views: parseInt(item.statistics?.viewCount || "0", 10),
+        likesCount: parseInt(item.statistics?.likeCount || "0", 10),
+        dislikesCount: 0,
+        commentsCount: parseInt(item.statistics?.commentCount || "0", 10),
+        duration: formatDurationSeconds(durationSeconds),
+        createdAt: item.snippet?.publishedAt || new Date().toISOString(),
+        contentType,
+        productivityScore,
+      };
+
+      cleanVideos.push(vid);
+    }
+
+    cleanVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (typeof window !== "undefined" && cleanVideos.length > 0) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: cleanVideos }));
+      } catch {}
+    }
+
+    return cleanVideos;
+  } catch (err) {
+    console.error("fetchMyYouTubeVideos error:", err);
+    return [];
+  }
+}
+
+/**
+ * Fetches public channel profile details by YouTube channel ID (e.g. UC...).
+ */
+export async function fetchYouTubeChannelById(
+  accessToken: string,
+  channelId: string
+): Promise<YouTubeChannelProfile | null> {
+  if (!channelId) return null;
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,brandingSettings,statistics&id=${channelId}`,
+      {
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          : { Accept: "application/json" },
+      }
+    );
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item) return null;
+
+    const title = item.snippet?.title || "Creator";
+    const rawHandle = item.snippet?.customUrl || `@${title.toLowerCase().replace(/\s+/g, "_")}`;
+    const handle = rawHandle.startsWith("@") ? rawHandle : `@${rawHandle}`;
+
+    return {
+      channelId: item.id || channelId,
+      title,
+      handle,
+      description: item.snippet?.description || "",
+      avatar:
+        item.snippet?.thumbnails?.high?.url ||
+        item.snippet?.thumbnails?.medium?.url ||
+        item.snippet?.thumbnails?.default?.url ||
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+      banner:
+        item.brandingSettings?.image?.bannerExternalUrl ||
+        "linear-gradient(to right, #f59e0b, #e11d48, #4f46e5)",
+      subscribersCount: parseInt(item.statistics?.subscriberCount || "0", 10),
+      videoCount: parseInt(item.statistics?.videoCount || "0", 10),
+      uploadsPlaylistId:
+        item.contentDetails?.relatedPlaylists?.uploads ||
+        (channelId.startsWith("UC") ? "UU" + channelId.substring(2) : ""),
+    };
+  } catch (err) {
+    console.error("fetchYouTubeChannelById error:", err);
+    return null;
+  }
+}
+
