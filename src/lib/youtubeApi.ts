@@ -310,6 +310,168 @@ export async function fetchSubscribedLongFormVideos(
   }
 }
 
+/**
+ * Fetches up to 50 long-form videos for a specific YouTube channel.
+ * Strictly excludes YouTube Shorts (<61s or #shorts).
+ */
+export async function fetchChannelLongFormVideos(
+  accessToken: string,
+  channelId: string,
+  channelTitle?: string,
+  channelAvatar?: string,
+  force = false
+): Promise<Video[]> {
+  if (!accessToken || !channelId) return [];
+
+  const cacheKey = `citra_channel_feed_${channelId}`;
+  if (!force && typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_TTL_MS) {
+          return data;
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    let uploadsPlaylistId = "";
+    if (channelId.startsWith("UC")) {
+      uploadsPlaylistId = "UU" + channelId.substring(2);
+    } else {
+      // Fallback: look up channel's contentDetails to find uploads playlist
+      const chRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      if (chRes.ok) {
+        const chData = await chRes.json();
+        uploadsPlaylistId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || "";
+      }
+    }
+
+    if (!uploadsPlaylistId) return [];
+
+    // Fetch up to 50 items from the channel's uploads playlist
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rawItems = json.items || [];
+    const videoIds = rawItems
+      .map((item: any) => item.contentDetails?.videoId || item.snippet?.resourceId?.videoId)
+      .filter(Boolean);
+
+    if (videoIds.length === 0) return [];
+
+    // Batch query video details (contentDetails for duration, statistics for views/likes)
+    const videoRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds.join(",")}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!videoRes.ok) return [];
+    const videoJson = await videoRes.json();
+    const videoItems = videoJson.items || [];
+
+    const cleanVideos: Video[] = [];
+
+    for (const item of videoItems) {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const rawDuration = item.contentDetails?.duration || "";
+      const durationSeconds = parseISO8601Duration(rawDuration);
+
+      if (isShortsVideo(title, description, durationSeconds)) {
+        continue;
+      }
+
+      const effectiveChannelTitle = item.snippet?.channelTitle || channelTitle || "Creator";
+      const avatar =
+        channelAvatar ||
+        item.snippet?.thumbnails?.default?.url ||
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80";
+
+      const tags = item.snippet?.tags || ["youtube", "channel"];
+      const categoryId = item.snippet?.categoryId;
+
+      const { contentType, productivityScore } = classifyVideoContent(
+        title,
+        description,
+        tags,
+        effectiveChannelTitle,
+        categoryId
+      );
+
+      const vid: Video = {
+        id: item.id,
+        title,
+        description,
+        driveFileId: item.id,
+        driveUrl: `https://www.youtube.com/watch?v=${item.id}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0`,
+        thumbnailUrl:
+          item.snippet?.thumbnails?.maxres?.url ||
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
+        uploaderUid: channelId,
+        uploaderName: effectiveChannelTitle,
+        uploaderAvatar: avatar,
+        uploaderHandle: effectiveChannelTitle.toLowerCase().replace(/\s+/g, "_"),
+        category: contentType === "productive" ? "Coding & Tech" : contentType === "entertainment" ? "Gaming" : "Subscribed",
+        tags,
+        views: parseInt(item.statistics?.viewCount || "0", 10),
+        likesCount: parseInt(item.statistics?.likeCount || "0", 10),
+        dislikesCount: 0,
+        commentsCount: parseInt(item.statistics?.commentCount || "0", 10),
+        duration: formatDurationSeconds(durationSeconds),
+        createdAt: item.snippet?.publishedAt || new Date().toISOString(),
+        contentType,
+        productivityScore,
+      };
+
+      cleanVideos.push(vid);
+    }
+
+    cleanVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (typeof window !== "undefined" && cleanVideos.length > 0) {
+      try {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ timestamp: Date.now(), data: cleanVideos })
+        );
+      } catch {}
+    }
+
+    return cleanVideos;
+  } catch (err) {
+    console.error(`Failed to fetch channel uploads for ${channelId}:`, err);
+    return [];
+  }
+}
+
 const PRODUCTIVE_KEYWORDS = [
   "tutorial", "course", "learn", "how to", "guide", "lecture", "explained",
   "code", "coding", "programming", "developer", "javascript", "typescript",

@@ -13,6 +13,7 @@ import {
   YouTubeSubscription, 
   fetchUserSubscriptions, 
   fetchSubscribedLongFormVideos,
+  fetchChannelLongFormVideos,
   sortVideosProductiveFirst,
   sortVideosEntertainmentFirst,
   filterProductiveOnly,
@@ -57,6 +58,10 @@ function HomeFeed() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Deep channel videos map and loading indicator
+  const [channelVideosMap, setChannelVideosMap] = useState<Record<string, Video[]>>({});
+  const [channelLoading, setChannelLoading] = useState(false);
+
   // Watch Later & Custom Playlist States
   const [watchLaterIds, setWatchLaterIds] = useState<string[]>([]);
   const [isWatchLaterView, setIsWatchLaterView] = useState(false);
@@ -65,9 +70,7 @@ function HomeFeed() {
   const [isWatchLaterShelfDismissed, setIsWatchLaterShelfDismissed] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setIsSidebarOpen(true);
-    }
+    // Sidebar stays closed by default on all screens for spacious distraction-free view
     setWatchLaterIds(getWatchLaterIds());
     setPlaylists(getPlaylists());
 
@@ -125,16 +128,70 @@ function HomeFeed() {
     };
   }, [googleAccessToken, selectedCategory, urlQuery]);
 
+  // Fetch deep channel uploads (up to 50 long-form videos) when a channel is selected
+  useEffect(() => {
+    const targetChannelId = selectedChannelId;
+    const token = googleAccessToken;
+    if (!targetChannelId || !token) return;
+
+    if (channelVideosMap[targetChannelId] && channelVideosMap[targetChannelId].length > 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    async function loadChannelUploads(chId: string, tok: string) {
+      setChannelLoading(true);
+      try {
+        const targetSub = subscriptions.find((s) => s.channelId === chId);
+        const channelVids = await fetchChannelLongFormVideos(
+          tok,
+          chId,
+          targetSub?.title,
+          targetSub?.thumbnail
+        );
+        if (!isCancelled && channelVids.length > 0) {
+          setChannelVideosMap((prev) => ({ ...prev, [chId]: channelVids }));
+        }
+      } catch (err) {
+        console.error("Failed to load channel videos:", err);
+      } finally {
+        if (!isCancelled) setChannelLoading(false);
+      }
+    }
+
+    loadChannelUploads(targetChannelId, token);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedChannelId, googleAccessToken, subscriptions, channelVideosMap]);
+
   const handleRefreshFeed = async (isManual = false) => {
-    if (!googleAccessToken || subscriptions.length === 0) return;
+    const token = googleAccessToken;
+    if (!token) return;
     if (isManual) setIsRefreshing(true);
     try {
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem(`citra_yt_feed_${googleAccessToken.slice(-8)}`);
-      }
-      const freshVideos = await fetchSubscribedLongFormVideos(googleAccessToken, subscriptions, true);
-      if (freshVideos.length > 0) {
-        setVideos(freshVideos);
+      const targetChannelId = selectedChannelId;
+      if (targetChannelId) {
+        const targetSub = subscriptions.find((s) => s.channelId === targetChannelId);
+        const freshChannelVids = await fetchChannelLongFormVideos(
+          token,
+          targetChannelId,
+          targetSub?.title,
+          targetSub?.thumbnail,
+          true
+        );
+        if (freshChannelVids.length > 0) {
+          setChannelVideosMap((prev) => ({ ...prev, [targetChannelId]: freshChannelVids }));
+        }
+      } else if (subscriptions.length > 0) {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(`citra_yt_feed_${token.slice(-8)}`);
+        }
+        const freshVideos = await fetchSubscribedLongFormVideos(token, subscriptions, true);
+        if (freshVideos.length > 0) {
+          setVideos(freshVideos);
+        }
       }
     } finally {
       if (isManual) setIsRefreshing(false);
@@ -178,7 +235,11 @@ function HomeFeed() {
       processedVideos = processedVideos.filter((v) => targetPl.videoIds.includes(v.id));
     }
   } else if (selectedChannelId) {
-    processedVideos = processedVideos.filter((v) => v.uploaderUid === selectedChannelId);
+    if (channelVideosMap[selectedChannelId] && channelVideosMap[selectedChannelId].length > 0) {
+      processedVideos = channelVideosMap[selectedChannelId];
+    } else {
+      processedVideos = processedVideos.filter((v) => v.uploaderUid === selectedChannelId);
+    }
   }
 
   // 2. Category filter
@@ -258,7 +319,7 @@ function HomeFeed() {
 
         <main
           className={`flex-1 min-w-0 px-4 sm:px-6 pb-16 transition-all duration-300 ${
-            isSidebarOpen ? "lg:ml-60" : "lg:ml-16"
+            isSidebarOpen ? "lg:ml-60" : "ml-0"
           }`}
         >
           {/* Guest Welcome Banner if not signed in */}
@@ -294,7 +355,7 @@ function HomeFeed() {
 
           {/* ==================== PINNED TOP WATCH LATER SHELF ==================== */}
           {watchLaterVideos.length > 0 && !isWatchLaterShelfDismissed && !isWatchLaterView && (
-            <section className="mt-4 mb-6 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-[#161622] to-[#0f0f15] p-4 sm:p-5 shadow-lg relative">
+            <section className="mt-4 mb-6 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-[#161620] to-[#0f0f15] p-4 sm:p-5 shadow-lg relative">
               <div className="flex items-center justify-between pb-3 border-b border-[#212130]">
                 <div className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
@@ -340,79 +401,83 @@ function HomeFeed() {
           )}
 
           {/* ==================== FOCUS MODE & ORDERING BAR ==================== */}
-          <div className="my-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#181822] pb-3">
-            {/* Feed Mode Selector Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-              <button
-                onClick={() => setFeedMode("productive-first")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                  feedMode === "productive-first"
-                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
-                }`}
-                title="Productive, educational & tech videos appear first"
-              >
-                <Brain className="h-3.5 w-3.5" />
-                <span>Productive First</span>
-              </button>
+          {/* Mode Selector Chips are hidden when left sidebar is open! */}
+          {(!isSidebarOpen || (user && subscriptions.length > 0)) && (
+            <div className={`my-3 flex flex-wrap items-center ${isSidebarOpen ? "justify-end" : "justify-between"} gap-3 border-b border-[#181822] pb-3`}>
+              {!isSidebarOpen && (
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                  <button
+                    onClick={() => setFeedMode("productive-first")}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      feedMode === "productive-first"
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                    }`}
+                    title="Productive, educational & tech videos appear first"
+                  >
+                    <Brain className="h-3.5 w-3.5" />
+                    <span>Productive First</span>
+                  </button>
 
-              <button
-                onClick={() => setFeedMode("only-productive")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                  feedMode === "only-productive"
-                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
-                }`}
-                title="Deep focus: hide entertainment videos completely"
-              >
-                <Target className="h-3.5 w-3.5" />
-                <span>Only Productive</span>
-              </button>
+                  <button
+                    onClick={() => setFeedMode("only-productive")}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      feedMode === "only-productive"
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                    }`}
+                    title="Deep focus: hide entertainment videos completely"
+                  >
+                    <Target className="h-3.5 w-3.5" />
+                    <span>Only Productive</span>
+                  </button>
 
-              <button
-                onClick={() => setFeedMode("only-entertainment")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                  feedMode === "only-entertainment"
-                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
-                }`}
-                title="Relax mode: show entertainment videos"
-              >
-                <Popcorn className="h-3.5 w-3.5" />
-                <span>Entertainment</span>
-              </button>
+                  <button
+                    onClick={() => setFeedMode("only-entertainment")}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      feedMode === "only-entertainment"
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                    }`}
+                    title="Relax mode: show entertainment videos"
+                  >
+                    <Popcorn className="h-3.5 w-3.5" />
+                    <span>Entertainment</span>
+                  </button>
 
-              <button
-                onClick={() => setFeedMode("newest")}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                  feedMode === "newest"
-                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
-                }`}
-                title="Standard chronological order"
-              >
-                <Clock3 className="h-3.5 w-3.5" />
-                <span>Newest First</span>
-              </button>
+                  <button
+                    onClick={() => setFeedMode("newest")}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      feedMode === "newest"
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                    }`}
+                    title="Standard chronological order"
+                  >
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>Newest First</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Live Auto-Refresh Status & Quick Trigger */}
+              {user && subscriptions.length > 0 && (
+                <button
+                  onClick={() => handleRefreshFeed(true)}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2 rounded-full border border-zinc-800/80 bg-[#121218] px-3 py-1.5 text-xs text-zinc-300 hover:text-white hover:border-zinc-700 active:scale-95 transition"
+                  title="Feed auto-refreshes every minute. Click to refresh immediately."
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-semibold text-[11px] text-zinc-300">Auto-Syncing</span>
+                  <RefreshCw className={`h-3 w-3 ml-0.5 text-zinc-400 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
+                </button>
+              )}
             </div>
-
-            {/* Live Auto-Refresh Status & Quick Trigger */}
-            {user && subscriptions.length > 0 && (
-              <button
-                onClick={() => handleRefreshFeed(true)}
-                disabled={isRefreshing}
-                className="flex items-center gap-2 rounded-full border border-zinc-800/80 bg-[#121218] px-3 py-1.5 text-xs text-zinc-300 hover:text-white hover:border-zinc-700 active:scale-95 transition"
-                title="Feed auto-refreshes every minute. Click to refresh immediately."
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="font-semibold text-[11px] text-zinc-300">Auto-Syncing</span>
-                <RefreshCw className={`h-3 w-3 ml-0.5 text-zinc-400 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
-              </button>
-            )}
-          </div>
+          )}
 
           {/* Active View Header Bar (Channel / Playlist / Watch Later Filter) */}
           {(isWatchLaterView || selectedChannel || selectedPlaylist || urlQuery) && (
@@ -458,6 +523,14 @@ function HomeFeed() {
                 <X className="h-3 w-3" />
                 <span>Clear Filter</span>
               </button>
+            </div>
+          )}
+
+          {/* Channel Deep Loading Notification */}
+          {channelLoading && selectedChannel && (
+            <div className="flex items-center gap-2.5 py-3 px-4 mb-4 rounded-2xl bg-[#13131c] border border-amber-500/20 text-xs text-amber-400">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400 shrink-0" />
+              <span>Fetching all long-form uploads from <strong className="text-white font-medium">{selectedChannel.title}</strong>...</span>
             </div>
           )}
 

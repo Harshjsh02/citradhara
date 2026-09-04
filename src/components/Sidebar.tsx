@@ -102,7 +102,7 @@ export default function Sidebar({
 
       <aside
         className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col border-r border-[#161620] bg-[#08080a] transition-all duration-300 overflow-y-auto ${
-          isOpen ? "w-60" : "w-0 -translate-x-full lg:w-16 lg:translate-x-0"
+          isOpen ? "w-60 translate-x-0 shadow-2xl" : "w-60 -translate-x-full pointer-events-none"
         }`}
       >
       <div className="flex-1 space-y-5 py-3 px-2">
@@ -123,7 +123,7 @@ export default function Sidebar({
             }`}
           >
             <Home className="h-4 w-4 text-zinc-300 shrink-0" />
-            <span className={`${!isOpen ? "lg:hidden" : ""}`}>All Subscriptions</span>
+            <span>All Subscriptions</span>
           </Link>
 
           {/* Watch Later Quick Access */}
@@ -139,9 +139,9 @@ export default function Sidebar({
             }`}
           >
             <Clock className="h-4 w-4 text-zinc-300 shrink-0" />
-            <span className={`flex-1 text-left ${!isOpen ? "lg:hidden" : ""}`}>Watch Later</span>
+            <span className="flex-1 text-left">Watch Later</span>
             {watchLaterCount > 0 && (
-              <span className={`rounded-full bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 ${!isOpen ? "lg:hidden" : ""}`}>
+              <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
                 {watchLaterCount}
               </span>
             )}
@@ -159,7 +159,7 @@ export default function Sidebar({
             }`}
           >
             <History className="h-4 w-4 text-zinc-300 shrink-0" />
-            <span className={`${!isOpen ? "lg:hidden" : ""}`}>History</span>
+            <span>History</span>
           </Link>
 
           <Link
@@ -174,12 +174,87 @@ export default function Sidebar({
             }`}
           >
             <ThumbsUp className="h-4 w-4 text-zinc-300 shrink-0" />
-            <span className={`${!isOpen ? "lg:hidden" : ""}`}>Liked</span>
+            <span>Liked</span>
           </Link>
         </div>
 
+        {/* Categories / Streams of Wonder (Moved Upward!) */}
+        <div className="space-y-1 border-t border-[#161620] pt-3">
+          <div className="px-3 pb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Explore Wonders
+            </span>
+          </div>
+
+          <div className="space-y-0.5">
+            {CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    if (onSelectCategory) onSelectCategory(cat);
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
+                    isSelected
+                      ? "bg-[#171722] text-amber-400 font-semibold"
+                      : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+                  }`}
+                >
+                  <span className="shrink-0">{CATEGORY_ICONS[cat] || <Compass className="h-3.5 w-3.5" />}</span>
+                  <span className="truncate">{cat}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom Playlists Section */}
+        {customPlaylists.length > 0 && (
+          <div className="space-y-1 border-t border-[#161620] pt-3">
+            <div className="px-3 pb-1 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Playlists
+              </span>
+              <span className="text-[10px] text-amber-400 font-mono">
+                {customPlaylists.length}
+              </span>
+            </div>
+
+            <div className="space-y-0.5">
+              {customPlaylists.map((pl) => {
+                const isSelected = selectedPlaylistId === pl.id;
+                return (
+                  <button
+                    key={pl.id}
+                    onClick={() => {
+                      if (onSelectPlaylist) {
+                        onSelectPlaylist(isSelected ? null : pl.id);
+                      }
+                      if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+                    }}
+                    title={pl.title}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
+                      isSelected
+                        ? "bg-[#181824] text-amber-400 font-semibold border border-amber-500/30"
+                        : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+                    }`}
+                  >
+                    <ListVideo className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                    <span className="truncate flex-1">{pl.title}</span>
+                    <span className="text-[10px] text-zinc-600 font-mono">
+                      {pl.videoIds.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Subscribed Channels */}
-        <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
+        <div className="space-y-1 border-t border-[#161620] pt-3">
           <div className="px-3 pb-1 flex items-center justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               Subscriptions
@@ -229,81 +304,6 @@ export default function Sidebar({
                 Sign in to view your subscriptions.
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Custom Playlists Section */}
-        {customPlaylists.length > 0 && (
-          <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
-            <div className="px-3 pb-1 flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                Playlists
-              </span>
-              <span className="text-[10px] text-amber-400 font-mono">
-                {customPlaylists.length}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              {customPlaylists.map((pl) => {
-                const isSelected = selectedPlaylistId === pl.id;
-                return (
-                  <button
-                    key={pl.id}
-                    onClick={() => {
-                      if (onSelectPlaylist) {
-                        onSelectPlaylist(isSelected ? null : pl.id);
-                      }
-                      if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
-                    }}
-                    title={pl.title}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
-                      isSelected
-                        ? "bg-[#181824] text-amber-400 font-semibold border border-amber-500/30"
-                        : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
-                    }`}
-                  >
-                    <ListVideo className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-                    <span className="truncate flex-1">{pl.title}</span>
-                    <span className="text-[10px] text-zinc-600 font-mono">
-                      {pl.videoIds.length}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Categories / Streams of Wonder */}
-        <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
-          <div className="px-3 pb-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              Explore Wonders
-            </span>
-          </div>
-
-          <div className="space-y-0.5">
-            {CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    if (onSelectCategory) onSelectCategory(cat);
-                    if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
-                    isSelected
-                      ? "bg-[#171722] text-amber-400 font-semibold"
-                      : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
-                  }`}
-                >
-                  <span className="shrink-0">{CATEGORY_ICONS[cat] || <Compass className="h-3.5 w-3.5" />}</span>
-                  <span className="truncate">{cat}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 

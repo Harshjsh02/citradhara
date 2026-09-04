@@ -52,7 +52,7 @@ export default function HistoryPage() {
 
         <main
           className={`flex-1 px-4 sm:px-6 py-6 transition-all duration-300 ${
-            isSidebarOpen ? "lg:ml-64" : "lg:ml-20"
+            isSidebarOpen ? "lg:ml-60" : "ml-0"
           }`}
         >
           {/* Header */}
