@@ -1011,3 +1011,105 @@ export async function fetchYouTubeChannelById(
   }
 }
 
+export interface YouTubeCommentItem {
+  id: string;
+  authorName: string;
+  authorAvatar: string;
+  authorChannelUrl?: string;
+  text: string;
+  likeCount: number;
+  publishedAt: string;
+  replyCount: number;
+}
+
+const COMMENTS_CACHE_PREFIX = "citra_yt_comments_";
+
+/**
+ * Fetches top public comments for a YouTube video using the YouTube Data API v3.
+ * Uses the user's Google OAuth token if available, or falls back to public API key.
+ * Caches comments in sessionStorage for 10 minutes.
+ */
+export async function fetchYouTubeComments(
+  videoId: string,
+  accessToken?: string | null
+): Promise<YouTubeCommentItem[]> {
+  if (!videoId) return [];
+
+  const cacheKey = `${COMMENTS_CACHE_PREFIX}${videoId}`;
+  if (typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp < 10 * 60 * 1000) {
+          return data;
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    let url = `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${encodeURIComponent(
+      videoId
+    )}&maxResults=35&order=relevance`;
+
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+    };
+
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    } else if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+      url += `&key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
+    }
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.warn("fetchYouTubeComments API response:", res.status);
+      return [];
+    }
+
+    const data = await res.json();
+    if (!data.items || !Array.isArray(data.items)) return [];
+
+    const comments: YouTubeCommentItem[] = data.items.map((item: any) => {
+      const topComment = item.snippet?.topLevelComment?.snippet;
+      let text = topComment?.textDisplay || topComment?.textOriginal || "";
+      text = text
+        .replace(/<br\s*[\/]?>/gi, "\n")
+        .replace(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, "$2")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+
+      return {
+        id: item.id || `yt-comm-${Math.random()}`,
+        authorName: topComment?.authorDisplayName || "YouTube User",
+        authorAvatar:
+          topComment?.authorProfileImageUrl ||
+          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80",
+        authorChannelUrl: topComment?.authorChannelUrl || "",
+        text,
+        likeCount: topComment?.likeCount || 0,
+        publishedAt: topComment?.publishedAt || new Date().toISOString(),
+        replyCount: item.snippet?.totalReplyCount || 0,
+      };
+    });
+
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ timestamp: Date.now(), data: comments })
+        );
+      } catch {}
+    }
+
+    return comments;
+  } catch (err) {
+    console.error("fetchYouTubeComments error:", err);
+    return [];
+  }
+}

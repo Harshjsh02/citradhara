@@ -22,6 +22,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import CommentSection from "@/components/CommentSection";
 import ShareModal from "@/components/ShareModal";
 import { formatViewCount } from "@/components/VideoCard";
+import { parseVideoUrl } from "@/lib/drive";
 import { Video } from "@/types";
 import { 
   fetchVideoById, 
@@ -240,6 +241,10 @@ export default function WatchPage() {
     relativeTime = "recently";
   }
 
+  const videoSource = parseVideoUrl(video.driveFileId || video.driveUrl || video.id);
+  const isYouTube = videoSource?.source === "youtube";
+  const ytVideoId = videoSource?.id || "";
+
   return (
     <div className="min-h-screen bg-[#090a0f] text-[#f3f4f6]">
       {/* Top Navbar */}
@@ -393,7 +398,11 @@ export default function WatchPage() {
             </div>
 
             {/* Comment Section */}
-            <CommentSection videoId={video.id} />
+            <CommentSection 
+              videoId={video.id} 
+              isYouTube={isYouTube}
+              youtubeVideoId={ytVideoId}
+            />
           </div>
 
           {/* Up Next / Recommendations Column */}
