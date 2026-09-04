@@ -18,7 +18,19 @@ export interface Video {
   commentsCount: number;
   duration: string;
   createdAt: string; // ISO string
+  contentType?: 'productive' | 'entertainment' | 'general';
+  productivityScore?: number;
 }
+
+export interface Playlist {
+  id: string;
+  title: string;
+  description?: string;
+  videoIds: string[];
+  createdAt: string;
+}
+
+export type FeedMode = 'productive-first' | 'only-productive' | 'only-entertainment' | 'newest';
 
 export interface UserProfile {
   uid: string;

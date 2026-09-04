@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -16,10 +16,19 @@ import {
   Tv, 
   Video,
   History, 
-  ThumbsUp
+  ThumbsUp,
+  Clock,
+  ListVideo,
+  Plus
 } from "lucide-react";
-import { CATEGORIES } from "@/types";
+import { CATEGORIES, Playlist } from "@/types";
 import { YouTubeSubscription } from "@/lib/youtubeApi";
+import { 
+  getPlaylists, 
+  getWatchLaterIds, 
+  WATCH_LATER_EVENT, 
+  PLAYLISTS_EVENT 
+} from "@/lib/playlists";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -28,6 +37,10 @@ interface SidebarProps {
   subscriptions?: YouTubeSubscription[];
   selectedChannelId?: string | null;
   onSelectChannel?: (channelId: string | null) => void;
+  selectedPlaylistId?: string | null;
+  onSelectPlaylist?: (playlistId: string | null) => void;
+  isWatchLaterActive?: boolean;
+  onToggleWatchLaterView?: () => void;
   onClose?: () => void;
 }
 
@@ -52,9 +65,30 @@ export default function Sidebar({
   subscriptions = [],
   selectedChannelId = null,
   onSelectChannel,
+  selectedPlaylistId = null,
+  onSelectPlaylist,
+  isWatchLaterActive = false,
+  onToggleWatchLaterView,
   onClose,
 }: SidebarProps) {
   const pathname = usePathname();
+  const [watchLaterCount, setWatchLaterCount] = useState(0);
+  const [customPlaylists, setCustomPlaylists] = useState<Playlist[]>([]);
+
+  useEffect(() => {
+    setWatchLaterCount(getWatchLaterIds().length);
+    setCustomPlaylists(getPlaylists());
+
+    const updateWatchLater = () => setWatchLaterCount(getWatchLaterIds().length);
+    const updatePlaylists = () => setCustomPlaylists(getPlaylists());
+
+    window.addEventListener(WATCH_LATER_EVENT, updateWatchLater);
+    window.addEventListener(PLAYLISTS_EVENT, updatePlaylists);
+    return () => {
+      window.removeEventListener(WATCH_LATER_EVENT, updateWatchLater);
+      window.removeEventListener(PLAYLISTS_EVENT, updatePlaylists);
+    };
+  }, []);
 
   return (
     <>
@@ -79,10 +113,11 @@ export default function Sidebar({
             onClick={() => {
               if (onSelectCategory) onSelectCategory("All");
               if (onSelectChannel) onSelectChannel(null);
+              if (onSelectPlaylist) onSelectPlaylist(null);
               if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
             }}
             className={`flex items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
-              pathname === "/" && selectedCategory === "All" && !selectedChannelId
+              pathname === "/" && selectedCategory === "All" && !selectedChannelId && !isWatchLaterActive && !selectedPlaylistId
                 ? "bg-[#14141c] text-white font-semibold"
                 : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
             }`}
@@ -90,6 +125,27 @@ export default function Sidebar({
             <Home className="h-4 w-4 text-zinc-300 shrink-0" />
             <span className={`${!isOpen ? "lg:hidden" : ""}`}>All Subscriptions</span>
           </Link>
+
+          {/* Watch Later Quick Access */}
+          <button
+            onClick={() => {
+              if (onToggleWatchLaterView) onToggleWatchLaterView();
+              if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+            }}
+            className={`flex w-full items-center gap-3.5 rounded-xl px-3 py-2 text-xs font-medium transition ${
+              isWatchLaterActive
+                ? "bg-[#181826] text-amber-400 font-semibold border border-amber-500/30"
+                : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+            }`}
+          >
+            <Clock className="h-4 w-4 text-zinc-300 shrink-0" />
+            <span className={`flex-1 text-left ${!isOpen ? "lg:hidden" : ""}`}>Watch Later</span>
+            {watchLaterCount > 0 && (
+              <span className={`rounded-full bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 ${!isOpen ? "lg:hidden" : ""}`}>
+                {watchLaterCount}
+              </span>
+            )}
+          </button>
 
           <Link
             href="/history"
@@ -175,6 +231,49 @@ export default function Sidebar({
             )}
           </div>
         </div>
+
+        {/* Custom Playlists Section */}
+        {customPlaylists.length > 0 && (
+          <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>
+            <div className="px-3 pb-1 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Playlists
+              </span>
+              <span className="text-[10px] text-amber-400 font-mono">
+                {customPlaylists.length}
+              </span>
+            </div>
+
+            <div className="space-y-0.5">
+              {customPlaylists.map((pl) => {
+                const isSelected = selectedPlaylistId === pl.id;
+                return (
+                  <button
+                    key={pl.id}
+                    onClick={() => {
+                      if (onSelectPlaylist) {
+                        onSelectPlaylist(isSelected ? null : pl.id);
+                      }
+                      if (typeof window !== "undefined" && window.innerWidth < 1024) onClose?.();
+                    }}
+                    title={pl.title}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left text-xs font-medium transition ${
+                      isSelected
+                        ? "bg-[#181824] text-amber-400 font-semibold border border-amber-500/30"
+                        : "text-zinc-400 hover:bg-[#121218] hover:text-zinc-200"
+                    }`}
+                  >
+                    <ListVideo className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                    <span className="truncate flex-1">{pl.title}</span>
+                    <span className="text-[10px] text-zinc-600 font-mono">
+                      {pl.videoIds.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Categories / Streams of Wonder */}
         <div className={`space-y-1 border-t border-[#161620] pt-3 ${!isOpen ? "lg:hidden" : ""}`}>

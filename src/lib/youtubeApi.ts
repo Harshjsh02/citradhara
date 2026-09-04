@@ -246,6 +246,19 @@ export async function fetchSubscribedLongFormVideos(
         item.snippet?.thumbnails?.default?.url ||
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80";
 
+      const tags = item.snippet?.tags || ["youtube", "subscribed"];
+      const channelTitle = item.snippet?.channelTitle || "Creator";
+      const categoryId = item.snippet?.categoryId;
+
+      // Classify productivity
+      const { contentType, productivityScore } = classifyVideoContent(
+        title,
+        description,
+        tags,
+        channelTitle,
+        categoryId
+      );
+
       const vid: Video = {
         id: item.id,
         title,
@@ -259,23 +272,25 @@ export async function fetchSubscribedLongFormVideos(
           item.snippet?.thumbnails?.medium?.url ||
           `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
         uploaderUid: channelId,
-        uploaderName: item.snippet?.channelTitle || "Creator",
+        uploaderName: channelTitle,
         uploaderAvatar: avatar,
-        uploaderHandle: (item.snippet?.channelTitle || "creator").toLowerCase().replace(/\s+/g, "_"),
-        category: "Subscribed",
-        tags: item.snippet?.tags || ["youtube", "subscribed"],
+        uploaderHandle: channelTitle.toLowerCase().replace(/\s+/g, "_"),
+        category: contentType === "productive" ? "Coding & Tech" : contentType === "entertainment" ? "Gaming" : "Subscribed",
+        tags,
         views: parseInt(item.statistics?.viewCount || "0", 10),
         likesCount: parseInt(item.statistics?.likeCount || "0", 10),
         dislikesCount: 0,
         commentsCount: parseInt(item.statistics?.commentCount || "0", 10),
         duration: formatDurationSeconds(durationSeconds),
         createdAt: item.snippet?.publishedAt || new Date().toISOString(),
+        contentType,
+        productivityScore,
       };
 
       cleanVideos.push(vid);
     }
 
-    // Sort by publication date (newest first)
+    // Default: Sort by publication date (newest first)
     cleanVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (typeof window !== "undefined" && cleanVideos.length > 0) {
@@ -292,4 +307,116 @@ export async function fetchSubscribedLongFormVideos(
     console.error("Failed to fetch long-form videos:", err);
     return [];
   }
+}
+
+const PRODUCTIVE_KEYWORDS = [
+  "tutorial", "course", "learn", "how to", "guide", "lecture", "explained",
+  "code", "coding", "programming", "developer", "javascript", "typescript",
+  "python", "react", "nextjs", "software", "hardware", "engineering", "ai",
+  "artificial intelligence", "machine learning", "deep learning", "neural network",
+  "science", "physics", "quantum", "mathematics", "math", "biology", "chemistry",
+  "astronomy", "cosmos", "documentary", "history", "biography", "philosophy",
+  "productivity", "deep work", "focus", "habit", "study", "business",
+  "finance", "investing", "economics", "startup", "architecture", "design",
+  "tech", "system design", "database", "cybersecurity", "linux", "cloud"
+];
+
+const ENTERTAINMENT_KEYWORDS = [
+  "gameplay", "gaming", "streamer", "walkthrough", "let's play", "esports",
+  "trailer", "teaser", "movie", "cinema", "film clip", "scene",
+  "music video", "official audio", "song", "remix", "cover", "album", "lyrics",
+  "comedy", "funny", "meme", "prank", "sketch", "roast", "standup",
+  "vlog", "daily vlog", "challenge", "reaction", "reacting", "drama"
+];
+
+/**
+ * Classifies a video as 'productive', 'entertainment', or 'general' with a score from 0 to 100.
+ */
+export function classifyVideoContent(
+  title: string,
+  description: string,
+  tags: string[] = [],
+  channelTitle: string = "",
+  categoryId?: string
+): { contentType: 'productive' | 'entertainment' | 'general'; productivityScore: number } {
+  let score = 50;
+
+  // 1. YouTube Category ID weights
+  if (categoryId) {
+    if (categoryId === "27" || categoryId === "28") score += 30; // Education, Science & Tech
+    else if (categoryId === "26") score += 20; // Howto & Style
+    else if (categoryId === "25") score += 10; // News & Politics
+    else if (categoryId === "10") score -= 25; // Music
+    else if (categoryId === "20") score -= 25; // Gaming
+    else if (categoryId === "23" || categoryId === "24") score -= 20; // Comedy, Entertainment
+  }
+
+  // 2. Keyword analysis
+  const combinedText = `${title} ${description} ${tags.join(" ")} ${channelTitle}`.toLowerCase();
+
+  let productiveMatches = 0;
+  for (const kw of PRODUCTIVE_KEYWORDS) {
+    if (combinedText.includes(kw)) productiveMatches++;
+  }
+
+  let entertainmentMatches = 0;
+  for (const kw of ENTERTAINMENT_KEYWORDS) {
+    if (combinedText.includes(kw)) entertainmentMatches++;
+  }
+
+  score += Math.min(productiveMatches * 8, 40);
+  score -= Math.min(entertainmentMatches * 8, 40);
+
+  const finalScore = Math.max(0, Math.min(100, score));
+
+  let contentType: 'productive' | 'entertainment' | 'general' = 'general';
+  if (finalScore >= 55) {
+    contentType = 'productive';
+  } else if (finalScore <= 45) {
+    contentType = 'entertainment';
+  }
+
+  return { contentType, productivityScore: finalScore };
+}
+
+/**
+ * Sorts videos with highest productivity score first, followed by newest published date.
+ */
+export function sortVideosProductiveFirst(videos: Video[]): Video[] {
+  return [...videos].sort((a, b) => {
+    const scoreA = a.productivityScore ?? 50;
+    const scoreB = b.productivityScore ?? 50;
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/**
+ * Sorts videos with entertainment first, followed by newest published date.
+ */
+export function sortVideosEntertainmentFirst(videos: Video[]): Video[] {
+  return [...videos].sort((a, b) => {
+    const scoreA = a.productivityScore ?? 50;
+    const scoreB = b.productivityScore ?? 50;
+    if (scoreA !== scoreB) {
+      return scoreA - scoreB; // lower productivity score = higher entertainment
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/**
+ * Filters for only productive content (score >= 50 or contentType === 'productive')
+ */
+export function filterProductiveOnly(videos: Video[]): Video[] {
+  return videos.filter((v) => (v.productivityScore ?? 50) >= 50 || v.contentType === 'productive');
+}
+
+/**
+ * Filters for only entertainment content (score < 55 or contentType === 'entertainment')
+ */
+export function filterEntertainmentOnly(videos: Video[]): Video[] {
+  return videos.filter((v) => (v.productivityScore ?? 50) < 55 || v.contentType === 'entertainment');
 }

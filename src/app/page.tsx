@@ -7,15 +7,41 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import CategoryChips from "@/components/CategoryChips";
 import VideoCard from "@/components/VideoCard";
-import { Video } from "@/types";
+import { Video, FeedMode, Playlist } from "@/types";
 import { fetchVideos } from "@/lib/db";
 import { 
   YouTubeSubscription, 
   fetchUserSubscriptions, 
-  fetchSubscribedLongFormVideos 
+  fetchSubscribedLongFormVideos,
+  sortVideosProductiveFirst,
+  sortVideosEntertainmentFirst,
+  filterProductiveOnly,
+  filterEntertainmentOnly
 } from "@/lib/youtubeApi";
+import { 
+  getWatchLaterIds, 
+  getPlaylists, 
+  clearWatchLater, 
+  WATCH_LATER_EVENT, 
+  PLAYLISTS_EVENT 
+} from "@/lib/playlists";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Search, ShieldCheck, Film, X, RefreshCw, CheckCircle2 } from "lucide-react";
+import { 
+  Sparkles, 
+  Search, 
+  Film, 
+  X, 
+  RefreshCw, 
+  CheckCircle2, 
+  Clock, 
+  Brain, 
+  Target, 
+  Popcorn, 
+  Clock3, 
+  ListVideo, 
+  Trash2,
+  ChevronRight
+} from "lucide-react";
 
 function HomeFeed() {
   const searchParams = useSearchParams();
@@ -26,14 +52,34 @@ function HomeFeed() {
   const [subscriptions, setSubscriptions] = useState<YouTubeSubscription[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [feedMode, setFeedMode] = useState<FeedMode>("productive-first");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Watch Later & Custom Playlist States
+  const [watchLaterIds, setWatchLaterIds] = useState<string[]>([]);
+  const [isWatchLaterView, setIsWatchLaterView] = useState(false);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isWatchLaterShelfDismissed, setIsWatchLaterShelfDismissed] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth >= 1024) {
       setIsSidebarOpen(true);
     }
+    setWatchLaterIds(getWatchLaterIds());
+    setPlaylists(getPlaylists());
+
+    const updateWatchLater = () => setWatchLaterIds(getWatchLaterIds());
+    const updatePlaylists = () => setPlaylists(getPlaylists());
+
+    window.addEventListener(WATCH_LATER_EVENT, updateWatchLater);
+    window.addEventListener(PLAYLISTS_EVENT, updatePlaylists);
+    return () => {
+      window.removeEventListener(WATCH_LATER_EVENT, updateWatchLater);
+      window.removeEventListener(PLAYLISTS_EVENT, updatePlaylists);
+    };
   }, []);
 
   // Fetch subscriptions and long-form uploads
@@ -83,7 +129,6 @@ function HomeFeed() {
     if (!googleAccessToken || subscriptions.length === 0) return;
     setIsRefreshing(true);
     try {
-      // Clear session cache for fresh data
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(`citra_yt_feed_${googleAccessToken.slice(-8)}`);
       }
@@ -96,23 +141,56 @@ function HomeFeed() {
     }
   };
 
-  // Filter videos by selected channel or search query
-  const displayedVideos = videos.filter((v) => {
-    if (selectedChannelId && v.uploaderUid !== selectedChannelId) {
-      return false;
+  // 1. Filter base list by channel / playlist / watch-later view
+  let processedVideos = [...videos];
+
+  if (isWatchLaterView) {
+    processedVideos = processedVideos.filter((v) => watchLaterIds.includes(v.id));
+  } else if (selectedPlaylistId) {
+    const targetPl = playlists.find((p) => p.id === selectedPlaylistId);
+    if (targetPl) {
+      processedVideos = processedVideos.filter((v) => targetPl.videoIds.includes(v.id));
     }
-    if (urlQuery) {
-      const q = urlQuery.toLowerCase();
-      const matches =
+  } else if (selectedChannelId) {
+    processedVideos = processedVideos.filter((v) => v.uploaderUid === selectedChannelId);
+  }
+
+  // 2. Category filter
+  if (selectedCategory && selectedCategory !== "All") {
+    processedVideos = processedVideos.filter(
+      (v) => v.category.toLowerCase() === selectedCategory.toLowerCase()
+    );
+  }
+
+  // 3. Apply Feed Ordering Mode
+  if (feedMode === "productive-first") {
+    processedVideos = sortVideosProductiveFirst(processedVideos);
+  } else if (feedMode === "only-productive") {
+    processedVideos = sortVideosProductiveFirst(filterProductiveOnly(processedVideos));
+  } else if (feedMode === "only-entertainment") {
+    processedVideos = sortVideosEntertainmentFirst(filterEntertainmentOnly(processedVideos));
+  } else if (feedMode === "newest") {
+    processedVideos.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  // 4. Search query filter
+  if (urlQuery) {
+    const q = urlQuery.toLowerCase();
+    processedVideos = processedVideos.filter(
+      (v) =>
         v.title.toLowerCase().includes(q) ||
         v.uploaderName.toLowerCase().includes(q) ||
-        v.tags.some((t) => t.toLowerCase().includes(q));
-      if (!matches) return false;
-    }
-    return true;
-  });
+        v.tags.some((t) => t.toLowerCase().includes(q))
+    );
+  }
 
   const selectedChannel = subscriptions.find((s) => s.channelId === selectedChannelId);
+  const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
+
+  // Watch Later videos for the top shelf
+  const watchLaterVideos = videos.filter((v) => watchLaterIds.includes(v.id));
 
   return (
     <div className="min-h-screen bg-[#08080a] text-[#f4f4f6]">
@@ -125,10 +203,30 @@ function HomeFeed() {
         <Sidebar
           isOpen={isSidebarOpen}
           selectedCategory={selectedCategory}
-          onSelectCategory={(cat) => setSelectedCategory(cat)}
+          onSelectCategory={(cat) => {
+            setSelectedCategory(cat);
+            setIsWatchLaterView(false);
+            setSelectedPlaylistId(null);
+          }}
           subscriptions={subscriptions}
           selectedChannelId={selectedChannelId}
-          onSelectChannel={(channelId) => setSelectedChannelId(channelId)}
+          onSelectChannel={(channelId) => {
+            setSelectedChannelId(channelId);
+            setIsWatchLaterView(false);
+            setSelectedPlaylistId(null);
+          }}
+          selectedPlaylistId={selectedPlaylistId}
+          onSelectPlaylist={(plId) => {
+            setSelectedPlaylistId(plId);
+            setIsWatchLaterView(false);
+            setSelectedChannelId(null);
+          }}
+          isWatchLaterActive={isWatchLaterView}
+          onToggleWatchLaterView={() => {
+            setIsWatchLaterView(!isWatchLaterView);
+            setSelectedPlaylistId(null);
+            setSelectedChannelId(null);
+          }}
           onClose={() => setIsSidebarOpen(false)}
         />
 
@@ -150,7 +248,7 @@ function HomeFeed() {
                   Your Subscribed Channels. Zero Shorts. No Algorithmic Noise.
                 </h1>
                 <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Sign in with your Google account to instantly view high-quality long-form videos exclusively from channels you already follow.
+                  Sign in with your Google account to instantly view high-quality long-form videos exclusively from channels you already follow, prioritized by productivity.
                 </p>
                 <div className="pt-2 flex flex-wrap items-center gap-3">
                   <button
@@ -168,58 +266,168 @@ function HomeFeed() {
             </div>
           )}
 
-          {/* Feed Info Bar: Filter Status / Channel Details */}
-          {user && (
-            <div className="pt-3 pb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[#181822] mb-4">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="flex items-center gap-1.5 font-semibold text-zinc-200">
-                  <Film className="h-4 w-4 text-amber-400" />
-                  {selectedChannel ? (
-                    <span className="flex items-center gap-1.5">
-                      <span>Channel:</span>
-                      <span className="text-amber-400 font-bold">{selectedChannel.title}</span>
-                      <button
-                        onClick={() => setSelectedChannelId(null)}
-                        className="ml-1 p-0.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                        title="Clear channel filter"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  ) : (
-                    <span>All Subscribed Channels (Long-Form Only)</span>
-                  )}
+          {/* ==================== PINNED TOP WATCH LATER SHELF ==================== */}
+          {watchLaterVideos.length > 0 && !isWatchLaterShelfDismissed && !isWatchLaterView && (
+            <section className="mt-4 mb-6 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-[#161622] to-[#0f0f15] p-4 sm:p-5 shadow-lg relative">
+              <div className="flex items-center justify-between pb-3 border-b border-[#212130]">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                      <span>Watch Later Queue</span>
+                      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                        {watchLaterVideos.length} saved
+                      </span>
+                    </h2>
+                  </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsWatchLaterView(true)}
+                    className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setIsWatchLaterShelfDismissed(true)}
+                    className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                    title="Hide shelf"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Horizontal Scrollable Row of Watch Later Items */}
+              <div className="mt-3.5 flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800">
+                {watchLaterVideos.slice(0, 6).map((video) => (
+                  <div key={`shelf-${video.id}`} className="w-56 sm:w-64 shrink-0">
+                    <VideoCard video={video} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ==================== FOCUS MODE & ORDERING BAR ==================== */}
+          <div className="my-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#181822] pb-3">
+            {/* Feed Mode Selector Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              <button
+                onClick={() => setFeedMode("productive-first")}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                  feedMode === "productive-first"
+                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                }`}
+                title="Productive, educational & tech videos appear first"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                <span>Productive First</span>
+              </button>
+
+              <button
+                onClick={() => setFeedMode("only-productive")}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                  feedMode === "only-productive"
+                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                }`}
+                title="Deep focus: hide entertainment videos completely"
+              >
+                <Target className="h-3.5 w-3.5" />
+                <span>Only Productive</span>
+              </button>
+
+              <button
+                onClick={() => setFeedMode("only-entertainment")}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                  feedMode === "only-entertainment"
+                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                }`}
+                title="Relax mode: show entertainment videos"
+              >
+                <Popcorn className="h-3.5 w-3.5" />
+                <span>Entertainment</span>
+              </button>
+
+              <button
+                onClick={() => setFeedMode("newest")}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                  feedMode === "newest"
+                    ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                    : "bg-[#14141e] text-zinc-400 hover:bg-[#1c1c28] hover:text-zinc-200 border border-[#202030]"
+                }`}
+                title="Standard chronological order"
+              >
+                <Clock3 className="h-3.5 w-3.5" />
+                <span>Newest First</span>
+              </button>
+            </div>
+
+            {/* Refresh Feed Action */}
+            {user && subscriptions.length > 0 && (
+              <button
+                onClick={handleRefreshFeed}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-[#121218] px-3 py-1 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition"
+                title="Refresh latest uploads"
+              >
+                <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
+                <span>Refresh Feed</span>
+              </button>
+            )}
+          </div>
+
+          {/* Active View Header Bar (Channel / Playlist / Watch Later Filter) */}
+          {(isWatchLaterView || selectedChannel || selectedPlaylist || urlQuery) && (
+            <div className="py-2.5 flex items-center justify-between border-b border-[#181822] mb-4 text-xs">
+              <div className="flex items-center gap-2 text-zinc-300">
+                {isWatchLaterView ? (
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <Clock className="h-4 w-4" />
+                    <span>Watch Later Queue</span>
+                  </span>
+                ) : selectedPlaylist ? (
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <ListVideo className="h-4 w-4" />
+                    <span>Playlist: {selectedPlaylist.title}</span>
+                  </span>
+                ) : selectedChannel ? (
+                  <span className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <Film className="h-4 w-4" />
+                    <span>Channel: {selectedChannel.title}</span>
+                  </span>
+                ) : urlQuery ? (
+                  <span className="flex items-center gap-1.5 text-zinc-200">
+                    <Search className="h-4 w-4 text-amber-400" />
+                    <span>Search results for: &ldquo;{urlQuery}&rdquo;</span>
+                  </span>
+                ) : null}
+
                 <span className="text-zinc-600">•</span>
                 <span className="text-zinc-400 font-mono text-[11px]">
-                  {displayedVideos.length} videos
+                  {processedVideos.length} videos
                 </span>
               </div>
 
-              {subscriptions.length > 0 && (
-                <button
-                  onClick={handleRefreshFeed}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-[#121218] px-3 py-1 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition"
-                  title="Refresh latest uploads"
-                >
-                  <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin text-amber-400" : ""}`} />
-                  <span>Refresh</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Search Query header */}
-          {urlQuery && (
-            <div className="py-2.5 flex items-center justify-between border-b border-[#181822] mb-4">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-amber-400" />
-                <h2 className="text-sm font-medium text-zinc-200">
-                  Search results for: <span className="text-white font-semibold">&ldquo;{urlQuery}&rdquo;</span>
-                </h2>
-              </div>
-              <span className="text-xs text-zinc-500">{displayedVideos.length} results</span>
+              {/* Clear active filter button */}
+              <button
+                onClick={() => {
+                  setIsWatchLaterView(false);
+                  setSelectedChannelId(null);
+                  setSelectedPlaylistId(null);
+                }}
+                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition"
+              >
+                <X className="h-3 w-3" />
+                <span>Clear Filter</span>
+              </button>
             </div>
           )}
 
@@ -240,31 +448,40 @@ function HomeFeed() {
                   </div>
                 ))}
               </div>
-            ) : displayedVideos.length === 0 ? (
+            ) : processedVideos.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#121218] border border-[#1d1d28] text-zinc-500 mb-3">
-                  <Film className="h-6 w-6 text-amber-400" />
+                  <Brain className="h-6 w-6 text-amber-400" />
                 </div>
-                <h3 className="text-base font-semibold text-white mb-1">No videos found</h3>
+                <h3 className="text-base font-semibold text-white mb-1">No videos in this view</h3>
                 <p className="text-xs text-zinc-400 max-w-sm mb-5 leading-relaxed">
-                  {selectedChannelId
-                    ? "No long-form videos found for this channel right now."
+                  {isWatchLaterView
+                    ? "Your Watch Later queue is empty. Tap the clock icon on any video to save it for later."
+                    : feedMode === "only-productive"
+                    ? "No productive videos found in the current filter. Try switching to 'Productive First' or 'All'."
                     : urlQuery
                     ? `No videos matched "${urlQuery}".`
-                    : "Sign in with Google to sync all your subscribed channels and watch their latest uploads."}
+                    : "Sign in with Google to sync all your subscribed channels."}
                 </p>
-                {!user && (
+                {isWatchLaterView ? (
+                  <button
+                    onClick={() => setIsWatchLaterView(false)}
+                    className="rounded-full bg-amber-500 hover:bg-amber-400 text-black px-6 py-2 text-xs font-bold transition"
+                  >
+                    Back to All Subscriptions
+                  </button>
+                ) : !user ? (
                   <button
                     onClick={() => signInWithGoogle()}
                     className="rounded-full bg-amber-500 hover:bg-amber-400 text-black px-6 py-2 text-xs font-bold transition"
                   >
                     Sign in with Google
                   </button>
-                )}
+                ) : null}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-                {displayedVideos.map((video) => (
+                {processedVideos.map((video) => (
                   <VideoCard key={video.id} video={video} />
                 ))}
               </div>
