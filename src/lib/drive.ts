@@ -36,7 +36,7 @@ export function parseVideoUrl(input: string): VideoSourceDetails | null {
     return {
       source: "youtube",
       id,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`,
+      embedUrl: `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`,
       thumbnailUrl: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
       viewUrl: `https://www.youtube.com/watch?v=${id}`
     };
@@ -47,7 +47,7 @@ export function parseVideoUrl(input: string): VideoSourceDetails | null {
     return {
       source: "youtube",
       id: trimmed,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${trimmed}?autoplay=1&rel=0`,
+      embedUrl: `https://www.youtube.com/embed/${trimmed}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`,
       thumbnailUrl: `https://img.youtube.com/vi/${trimmed}/hqdefault.jpg`,
       viewUrl: `https://www.youtube.com/watch?v=${trimmed}`
     };
