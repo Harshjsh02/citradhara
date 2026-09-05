@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   User as FirebaseUser 
 } from "firebase/auth";
-import { auth, googleProvider, youtubeProvider, isFirebaseConfigured } from "@/lib/firebase";
+import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 
 export interface UserAuth {
   uid: string;
@@ -140,9 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const connectYouTubeSubscriptions = async (): Promise<string | null> => {
-    if (isFirebaseConfigured && auth && youtubeProvider) {
+    if (isFirebaseConfigured && auth && googleProvider) {
       try {
-        const result = await signInWithPopup(auth, youtubeProvider);
+        const result = await signInWithPopup(auth, googleProvider);
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const token = credential?.accessToken || null;
         if (token) {

@@ -32,12 +32,9 @@ if (isFirebaseConfigured) {
     db = getFirestore(app);
     storage = getStorage(app);
     
-    // 1. Standard Google Sign-In: Non-sensitive scopes only (profile, email) -> Zero verification required by Google!
+    // Google Sign-In with YouTube read-only permissions for user subscriptions feed
     googleProvider = new GoogleAuthProvider();
-
-    // 2. Dedicated YouTube Provider: For optional YouTube Subscriptions sync
-    youtubeProvider = new GoogleAuthProvider();
-    youtubeProvider.addScope("https://www.googleapis.com/auth/youtube.readonly");
+    googleProvider.addScope("https://www.googleapis.com/auth/youtube.readonly");
   } catch (error) {
     console.warn("Firebase initialization error:", error);
   }
