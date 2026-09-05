@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   User as FirebaseUser 
 } from "firebase/auth";
-import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
+import { auth, googleProvider, youtubeProvider, isFirebaseConfigured } from "@/lib/firebase";
 
 export interface UserAuth {
   uid: string;
@@ -23,6 +23,7 @@ interface AuthContextType {
   isFirebaseActive: boolean;
   googleAccessToken: string | null;
   signInWithGoogle: () => Promise<void>;
+  connectYouTubeSubscriptions: () => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isFirebaseActive: false,
   googleAccessToken: null,
   signInWithGoogle: async () => {},
+  connectYouTubeSubscriptions: async () => null,
   signOut: async () => {},
 });
 
@@ -137,6 +139,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const connectYouTubeSubscriptions = async (): Promise<string | null> => {
+    if (isFirebaseConfigured && auth && youtubeProvider) {
+      try {
+        const result = await signInWithPopup(auth, youtubeProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken || null;
+        if (token) {
+          setGoogleAccessToken(token);
+          localStorage.setItem(YT_TOKEN_KEY, token);
+          return token;
+        }
+      } catch (err) {
+        console.warn("connectYouTubeSubscriptions status:", err);
+      }
+    }
+    return null;
+  };
+
   const signOut = async () => {
     localStorage.removeItem(YT_TOKEN_KEY);
     setGoogleAccessToken(null);
@@ -161,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isFirebaseActive: isFirebaseConfigured,
         googleAccessToken,
         signInWithGoogle,
+        connectYouTubeSubscriptions,
         signOut,
       }}
     >

@@ -23,6 +23,7 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
+let youtubeProvider: GoogleAuthProvider | null = null;
 
 if (isFirebaseConfigured) {
   try {
@@ -30,11 +31,16 @@ if (isFirebaseConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
+    
+    // 1. Standard Google Sign-In: Non-sensitive scopes only (profile, email) -> Zero verification required by Google!
     googleProvider = new GoogleAuthProvider();
-    googleProvider.addScope("https://www.googleapis.com/auth/youtube.readonly");
+
+    // 2. Dedicated YouTube Provider: For optional YouTube Subscriptions sync
+    youtubeProvider = new GoogleAuthProvider();
+    youtubeProvider.addScope("https://www.googleapis.com/auth/youtube.readonly");
   } catch (error) {
     console.warn("Firebase initialization error:", error);
   }
 }
 
-export { app, auth, db, storage, googleProvider };
+export { app, auth, db, storage, googleProvider, youtubeProvider };
